@@ -1988,4 +1988,133 @@ public final class DrawManager {
 			return new int[] { 0, 0 };
 		return new int[] { image.length, image[0].length };
 	}
+
+	/** Width of the wave progress bar (KAN-29). */
+	private static final int WAVE_BAR_WIDTH = 70;
+	/** Baseline Y of the wave counter, centred in the item HUD row. */
+	private static final int WAVE_TEXT_Y = 52;
+
+	/**
+	 * Draws the wave progress in the middle of the item HUD row
+	 * (Requirement 8 - Gameplay HUD, KAN-29): "ENEMIES 12/40" with a thin
+	 * bar that fills as the wave is destroyed.
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param remaining
+	 *            Enemies still alive.
+	 * @param total
+	 *            Enemies in the wave.
+	 * @param progress
+	 *            Share of the wave destroyed, from 0 to 1.
+	 */
+	public void drawWaveProgress(final Screen screen, final int remaining,
+			final int total, final float progress) {
+		if (total <= 0)
+			return;
+		String text = "ENEMIES " + remaining + "/" + total;
+		int centerX = screen.getWidth() / 2;
+		drawSmallString(text, centerX - getSmallStringWidth(text) / 2,
+				WAVE_TEXT_Y, Color.WHITE);
+
+		int barX = centerX - WAVE_BAR_WIDTH / 2;
+		int barY = WAVE_TEXT_Y + 3;
+		backBufferGraphics.setColor(new Color(60, 60, 60));
+		backBufferGraphics.fillRect(barX, barY, WAVE_BAR_WIDTH, 2);
+		backBufferGraphics.setColor(remaining <= total / 5 ? Color.YELLOW
+				: Color.GREEN);
+		backBufferGraphics.fillRect(barX, barY, Math.round(WAVE_BAR_WIDTH
+				* Math.max(0f, Math.min(1f, progress))), 2);
+	}
+
+	/**
+	 * Draws the end-of-stage banner (Requirement 8 - Gameplay HUD,
+	 * KAN-30): "STAGE X CLEAR" slides in from the left with the points
+	 * earned during the stage, then "NEXT: STAGE Y" (or "ALL STAGES
+	 * CLEAR" after the last one) appears.
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param level
+	 *            Stage just cleared.
+	 * @param lastLevel
+	 *            True if it was the last stage.
+	 * @param stagePoints
+	 *            Points earned during the stage.
+	 * @param slide
+	 *            How far the banner has slid in, from 0 to 1.
+	 * @param showNext
+	 *            True to show the "NEXT" line.
+	 */
+	public void drawStageClear(final Screen screen, final int level,
+			final boolean lastLevel, final int stagePoints, final float slide,
+			final boolean showNext) {
+		int bandHeight = screen.getHeight() / 5;
+		int bandY = screen.getHeight() / 2 - bandHeight / 2;
+		int offset = Math.round((1f - slide) * -screen.getWidth());
+
+		backBufferGraphics.setColor(Color.BLACK);
+		backBufferGraphics.fillRect(offset, bandY, screen.getWidth(),
+				bandHeight);
+		backBufferGraphics.setColor(Color.GREEN);
+		backBufferGraphics.drawLine(offset, bandY, offset + screen.getWidth(),
+				bandY);
+		backBufferGraphics.drawLine(offset, bandY + bandHeight,
+				offset + screen.getWidth(), bandY + bandHeight);
+
+		String title = "STAGE " + level + " CLEAR";
+		backBufferGraphics.setFont(fontBig);
+		backBufferGraphics.setColor(Color.GREEN);
+		backBufferGraphics.drawString(title, offset + (screen.getWidth()
+				- fontBigMetrics.stringWidth(title)) / 2, bandY + 34);
+
+		String points = "+" + stagePoints + " PTS";
+		backBufferGraphics.setFont(fontRegular);
+		backBufferGraphics.setColor(Color.YELLOW);
+		backBufferGraphics.drawString(points, offset + (screen.getWidth()
+				- fontRegularMetrics.stringWidth(points)) / 2, bandY + 56);
+
+		if (showNext) {
+			String next = lastLevel ? "ALL STAGES CLEAR!"
+					: "NEXT: STAGE " + (level + 1);
+			backBufferGraphics.setColor(Color.WHITE);
+			backBufferGraphics.drawString(next, offset + (screen.getWidth()
+					- fontRegularMetrics.stringWidth(next)) / 2,
+					bandY + 76);
+		}
+	}
+
+	/**
+	 * Draws the boss warning above the level countdown (Requirement 8 -
+	 * Gameplay HUD, KAN-31): a blinking "WARNING" between two red striped
+	 * bars, and "BOSS INCOMING" under it.
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param blinkOn
+	 *            True on the "on" frames of the blink.
+	 */
+	public void drawBossWarning(final Screen screen, final boolean blinkOn) {
+		int countdownTop = screen.getHeight() / 2 - screen.getHeight() / 12;
+		int bottom = countdownTop - 14;
+		int top = bottom - 64;
+		Color red = new Color(220, 30, 30);
+
+		backBufferGraphics.setColor(Color.BLACK);
+		backBufferGraphics.fillRect(0, top, screen.getWidth(), bottom - top);
+		for (int y : new int[] { top, bottom - 6 }) {
+			for (int x = -6; x < screen.getWidth(); x += 16) {
+				backBufferGraphics.setColor(red);
+				backBufferGraphics.fillPolygon(new int[] { x, x + 8, x + 14,
+						x + 6 }, new int[] { y + 6, y + 6, y, y }, 4);
+			}
+		}
+
+		if (blinkOn) {
+			backBufferGraphics.setColor(red);
+			drawCenteredBigString(screen, "WARNING", top + 36);
+		}
+		backBufferGraphics.setColor(Color.WHITE);
+		drawCenteredRegularString(screen, "BOSS INCOMING", top + 52);
+	}
 }

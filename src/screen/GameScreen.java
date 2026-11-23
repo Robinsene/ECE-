@@ -247,6 +247,8 @@ public class GameScreen extends Screen {
 	private engine.CurrencyHud currencyHud;
 	/** Screen shake when an enemy is destroyed. */
 	private ScreenShake screenShake;
+	/** Wave progress, stage clear banner and boss warning (Team ECE - KAN-29/30/31). */
+	private engine.StageHud stageHud;
 	/** Bonus meteor and its diamonds. AUTHORED BY: VFX TEAM (Effection) */
 	private MeteorManager meteors;
 	/** Points shown when enemies are destroyed. AUTHORED BY: VFX TEAM (Effection) */
@@ -374,6 +376,8 @@ public class GameScreen extends Screen {
 		this.hudAnimator = new HudAnimator();
 		this.currencyHud = new engine.CurrencyHud();
 		this.screenShake = new ScreenShake();
+		this.stageHud = new engine.StageHud();
+		this.stageHud.startWave(countAliveEnemies());
 		this.meteors = new MeteorManager(this.level, this.width, this.height,SEPARATION_LINE_HEIGHT);
 		this.pointsEffect = new PointsEffect(SEPARATION_LINE_HEIGHT);
 		this.scoreBoostPopups = new ArrayList<long[]>(); // Item System (Team CS)
@@ -560,6 +564,9 @@ public class GameScreen extends Screen {
 			// until cashed out (see engine.DiamondManager), and coins still
 			// falling are collected so the last kills' drops aren't lost.
 			if (isCleared && this.lives > 0) {
+				// "STAGE X CLEAR" banner (Team ECE - KAN-30).
+				this.stageHud.stageCleared(System.currentTimeMillis(),
+						this.score - this.initialScore);
 				this.levelsCompletedRun++; // Sharpshooter tiers (Mantis)
 				this.pendingDiamonds += this.level;
 				collectRemainingCoins();
@@ -588,6 +595,21 @@ public class GameScreen extends Screen {
 				&& this.achievementPopupQueue.isEmpty())
 			this.isRunning = false;
 
+	}
+
+	/**
+	 * Counts the enemies of the formation still alive (Team ECE - KAN-29).
+	 *
+	 * @return Enemies alive, 0 on boss stages.
+	 */
+	private int countAliveEnemies() {
+		if (this.enemyShipFormation == null)
+			return 0;
+		int alive = 0;
+		for (EnemyShip enemyShip : this.enemyShipFormation)
+			if (!enemyShip.isDestroyed())
+				alive++;
+		return alive;
 	}
 
 	/**
@@ -890,6 +912,15 @@ if (this.midBoss != null) {
 		// Low-health glitch (covers game + HUD). AUTHORED BY: VFX TEAM (Effection)
 		this.glitch.setEnabled(this.lowHealthActive && !this.levelFinished);
 		drawManager.drawGlitch(this, this.glitch);
+		// Wave progress in the middle of the item row, normal stages only
+		// (the boss health bar covers boss stages) (Team ECE - KAN-29).
+		if (this.enemyShipFormation != null && !this.paused) {
+			this.stageHud.updateWave(countAliveEnemies());
+			drawManager.drawWaveProgress(this,
+					this.stageHud.getWaveRemaining(),
+					this.stageHud.getWaveTotal(),
+					this.stageHud.getWaveProgress());
+		}
 
 		if (this.paused) {
 			String[] options = { PauseOption.RESUME.getLabel(),
@@ -915,6 +946,20 @@ if (this.midBoss != null) {
 					/ 12);
 			drawManager.drawItemHint(this, this.items); // Item System (Team CS)
 			drawManager.drawKeyHints(this, "P to pause");
+			// Boss stages: warning above the countdown (Team ECE - KAN-31).
+			if (engine.StageHud.isBossLevel(this.level))
+				drawManager.drawBossWarning(this, engine.StageHud
+						.isWarningBlinkOn(System.currentTimeMillis()));
+		}
+
+		// End-of-stage banner while the next screen loads (Team ECE - KAN-30).
+		if (this.stageHud.isStageCleared() && !this.paused) {
+			long bannerNow = System.currentTimeMillis();
+			drawManager.drawStageClear(this, this.level,
+					this.level == Core.getNumLevels(),
+					this.stageHud.getStagePoints(),
+					this.stageHud.getBannerSlide(bannerNow),
+					this.stageHud.isNextLineShown(bannerNow));
 		}
 
 
