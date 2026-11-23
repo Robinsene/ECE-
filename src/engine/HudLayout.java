@@ -43,6 +43,17 @@ public final class HudLayout {
 	/** Width of the extra-life bar (three life slots). */
 	public static final int EXTRA_LIFE_BAR_WIDTH = LIVES_ICON_SPACING * 3 - 9;
 
+	/** Number of life slots the top bar has room for (KAN-33). */
+	public static final int LIFE_SLOTS_SHOWN = 3;
+	/** Colour of an empty life slot, up to the run's max lives (KAN-33). */
+	public static final Color EMPTY_LIFE_SLOT_COLOR = new Color(40, 70, 45);
+
+	/** Left X of the shop hint, between the left separator and the coin
+	 * balance (KAN-40). */
+	public static final int SHOP_HINT_X = 185;
+	/** Baseline Y of the shop hint, on the coin balance row. */
+	public static final int SHOP_HINT_Y = 36;
+
 	/** Baseline Y of the top-centre level indicator. */
 	public static final int LEVEL_INDICATOR_Y = 14;
 

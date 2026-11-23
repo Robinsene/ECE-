@@ -259,6 +259,8 @@ public class GameScreen extends Screen {
 	private ScreenShake screenShake;
 	/** Wave progress, stage clear banner and boss warning (Team ECE - KAN-29/30/31). */
 	private engine.StageHud stageHud;
+	/** Shop affordability hint (Team ECE - KAN-40). */
+	private engine.ShopHint shopHint;
 	/** Bonus meteor and its diamonds. AUTHORED BY: VFX TEAM (Effection) */
 	private MeteorManager meteors;
 	/** Points shown when enemies are destroyed. AUTHORED BY: VFX TEAM (Effection) */
@@ -391,6 +393,7 @@ public class GameScreen extends Screen {
 		this.extraLifeTracker = new engine.ExtraLifeTracker(this.score);
 		this.screenShake = new ScreenShake();
 		this.stageHud = new engine.StageHud();
+		this.shopHint = new engine.ShopHint();
 		this.stageHud.startWave(countAliveEnemies());
 		this.meteors = new MeteorManager(this.level, this.width, this.height,SEPARATION_LINE_HEIGHT);
 		this.pointsEffect = new PointsEffect(SEPARATION_LINE_HEIGHT);
@@ -614,6 +617,21 @@ public class GameScreen extends Screen {
 				&& this.achievementPopupQueue.isEmpty())
 			this.isRunning = false;
 
+	}
+
+	/**
+	 * Ship line of the pause summary, read from the Player Ship Variety
+	 * stats (Team ECE - KAN-33): name, bullets per shot and shots per
+	 * second, e.g. "Two-Way Shot 2x 1.0/s".
+	 *
+	 * @return Ship summary.
+	 */
+	private String shipSummary() {
+		Ship.ShipType type = this.ship.getType();
+		double perSecond = 1000.0 / type.getShootingInterval();
+		return shop.ShopCatalog.shipName(type) + " "
+				+ type.getBulletsPerShot() + "x "
+				+ String.format(java.util.Locale.ROOT, "%.1f/s", perSecond);
 	}
 
 	/**
@@ -1008,6 +1026,14 @@ if (this.midBoss != null) {
 		// the level indicator.
 		this.currencyHud.update(coins, diamonds, now);
 		drawManager.drawCurrencyHud(this, this.currencyHud);
+		// Empty slots up to the run's max lives (Team ECE - KAN-33).
+		drawManager.drawEmptyLifeSlots(this, this.lives,
+				this.items.getMaxLives());
+		// "$" next to the coins when the shop has something affordable
+		// (Team ECE - KAN-40).
+		if (this.shopHint.canAffordSomething(coins))
+			drawManager.drawShopHint(this,
+					engine.ShopHint.isPulseOn(now));
 		drawManager.endHudScale();
 		drawManager.drawHorizontalLine(this, SEPARATION_LINE_HEIGHT - 1);
 		drawManager.drawItemHud(this, this.items); // Item System (Team CS)
@@ -1049,12 +1075,13 @@ if (this.midBoss != null) {
 			// Run summary under the menu (Team ECE - KAN-27).
 			drawManager.drawPauseSummary(this,
 					new String[] { "SCORE", "STAGE", "ENEMIES KILLED",
-							"STAGE TIME", "COINS THIS RUN" },
+							"STAGE TIME", "COINS THIS RUN", "SHIP" },
 					new String[] { Integer.toString(this.score),
 							Integer.toString(this.level),
 							Integer.toString(this.shipsDestroyed),
 							formatStageTime(),
-							Integer.toString(this.coinsCollected) },
+							Integer.toString(this.coinsCollected),
+							shipSummary() },
 					options.length);
 			drawManager.drawKeyHints(this,
 					"w+s / arrows to move, space to select, P to resume");

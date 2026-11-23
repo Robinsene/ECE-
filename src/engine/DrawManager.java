@@ -1186,6 +1186,46 @@ public final class DrawManager {
 		}
 	}
 
+	/**
+	 * Draws an outline for each life the player could still have, up to
+	 * the run's max lives (Requirement 8 - Gameplay HUD, KAN-33). The max
+	 * comes from the Item System (base lives plus the Max Life equipped
+	 * item), so the HUD reflects the selected loadout. Only the slots the
+	 * top bar has room for are drawn.
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param lives
+	 *            Current lives.
+	 * @param maxLives
+	 *            Lives cap of the run.
+	 */
+	public void drawEmptyLifeSlots(final Screen screen, final int lives,
+			final int maxLives) {
+		Ship dummyShip = new Ship(0, 0, Core.getSelectedShipType());
+		int slots = Math.min(maxLives, HudLayout.LIFE_SLOTS_SHOWN);
+		backBufferGraphics.setColor(HudLayout.EMPTY_LIFE_SLOT_COLOR);
+		for (int i = Math.max(0, lives); i < slots; i++)
+			backBufferGraphics.drawRect(HudLayout.LIVES_ICONS_X
+					+ HudLayout.LIVES_ICON_SPACING * i, HudLayout.LIVES_ICON_Y,
+					dummyShip.getWidth() - 1, dummyShip.getHeight() - 1);
+	}
+
+	/**
+	 * Draws the shop hint next to the coin balance (Requirement 8 -
+	 * Gameplay HUD, KAN-40): a small "$" that pulses when the coins cover
+	 * the cheapest thing still for sale in the shop.
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param pulseOn
+	 *            True on the bright frames of the pulse.
+	 */
+	public void drawShopHint(final Screen screen, final boolean pulseOn) {
+		drawSmallString("$", HudLayout.SHOP_HINT_X, HudLayout.SHOP_HINT_Y,
+				pulseOn ? Color.YELLOW : new Color(120, 100, 20));
+	}
+
 	/** Composite in use before {@link #beginHud}, restored by endHud. */
 	private java.awt.Composite hudOldComposite;
 	/** Transform in use before {@link #beginHudScale}. */
