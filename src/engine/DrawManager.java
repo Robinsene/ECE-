@@ -542,6 +542,26 @@ public final class DrawManager {
 	 * @param items
 	 *            Item system of the current run.
 	 */
+	/**
+	 * Right edge of the item slots drawn by {@link #drawItemHud}, with the
+	 * same geometry, so other HUD elements can keep clear of them
+	 * (KAN-34). Read-only: it does not change the Item System HUD.
+	 *
+	 * @param items
+	 *            Item system of the current run.
+	 * @return X just right of the last slot, plus a small gap.
+	 */
+	public int getItemSlotsRight(final ItemSystem items) {
+		if (items == null || backBufferGraphics == null)
+			return 0;
+		FontMetrics metrics = backBufferGraphics.getFontMetrics(
+				fontRegular.deriveFont(ITEM_FONT_SIZE));
+		int boxWidth = metrics.stringWidth("WW") + 8;
+		int perSlot = metrics.stringWidth("0") + 3 + boxWidth + 6;
+		return 6 + perSlot * items.api().getView().slots.size()
+				+ HudLayout.WAVE_MIN_GAP;
+	}
+
 	public void drawItemHint(final Screen screen, final ItemSystem items) {
 		int slots = items.api().getView().slots.size();
 		backBufferGraphics.setColor(Color.GRAY);
@@ -2234,10 +2254,33 @@ public final class DrawManager {
 	 */
 	public void drawWaveProgress(final Screen screen, final int remaining,
 			final int total, final float progress) {
+		drawWaveProgress(screen, remaining, total, progress, 0);
+	}
+
+	/**
+	 * Same as {@link #drawWaveProgress(Screen, int, int, float)}, kept to
+	 * the right of the item slots when an equipped item adds slots and they
+	 * would reach the centre (KAN-34).
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param remaining
+	 *            Enemies still alive.
+	 * @param total
+	 *            Enemies in the wave.
+	 * @param progress
+	 *            Share of the wave destroyed, from 0 to 1.
+	 * @param minLeft
+	 *            Left X the counter must not go past (0 for none).
+	 */
+	public void drawWaveProgress(final Screen screen, final int remaining,
+			final int total, final float progress, final int minLeft) {
 		if (total <= 0)
 			return;
 		String text = "ENEMIES " + remaining + "/" + total;
-		int centerX = screen.getWidth() / 2;
+		int halfWidth = Math.max(getSmallStringWidth(text),
+				HudLayout.WAVE_BAR_WIDTH) / 2;
+		int centerX = Math.max(screen.getWidth() / 2, minLeft + halfWidth);
 		drawSmallString(text, centerX - getSmallStringWidth(text) / 2,
 				HudLayout.WAVE_TEXT_Y, Color.WHITE);
 

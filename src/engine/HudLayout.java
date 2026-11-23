@@ -26,8 +26,9 @@ public final class HudLayout {
 
 	/** Left X of the LIVES label. */
 	public static final int LIVES_X = 20;
-	/** Horizontal space reserved for the "LIVES" label. */
-	public static final int LIVES_LABEL_WIDTH = 46;
+	/** Horizontal space reserved for the "LIVES" label. 50 rather than 46
+	 * so the label no longer touches the first life icon (KAN-34). */
+	public static final int LIVES_LABEL_WIDTH = 50;
 	/** Horizontal space reserved per life icon. */
 	public static final int LIVES_ICON_SPACING = 35;
 	/** Top Y of the life icons. */
@@ -71,6 +72,11 @@ public final class HudLayout {
 	public static final int COMBO_BASELINE = 72;
 	/** Baseline Y of the combo text under the boss health bar. */
 	public static final int COMBO_BASELINE_BOSS = 88;
+	/** Baseline Y of the combo text while an achievement popup covers the
+	 * right side from y 46 to 90 (KAN-34). */
+	public static final int COMBO_BASELINE_UNDER_POPUP = 106;
+	/** Smallest gap between the item slots and the wave counter. */
+	public static final int WAVE_MIN_GAP = 10;
 
 	// --- Colours ---
 

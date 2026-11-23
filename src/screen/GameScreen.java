@@ -617,6 +617,20 @@ public class GameScreen extends Screen {
 	}
 
 	/**
+	 * Baseline of the combo text: under the item HUD, under the boss bar on
+	 * boss stages, or under the achievement popup while one is shown, so
+	 * the popup never hides the combo (Team ECE - KAN-23, KAN-34).
+	 *
+	 * @return Baseline Y of the combo text.
+	 */
+	private int comboBaseline() {
+		if (this.unlockedAchievement != null)
+			return engine.HudLayout.COMBO_BASELINE_UNDER_POPUP;
+		return this.midBoss != null ? engine.HudLayout.COMBO_BASELINE_BOSS
+				: engine.HudLayout.COMBO_BASELINE;
+	}
+
+	/**
 	 * Counts the enemies of the formation still alive (Team ECE - KAN-29).
 	 *
 	 * @return Enemies alive, 0 on boss stages.
@@ -1010,8 +1024,7 @@ if (this.midBoss != null) {
 					this.comboTracker.getAlpha(now),
 					this.comboTracker.getScale(now),
 					this.comboTracker.getTimeLeft(now),
-					this.midBoss != null ? engine.HudLayout.COMBO_BASELINE_BOSS
-							: engine.HudLayout.COMBO_BASELINE);
+					comboBaseline());
 		drawManager.endHud();
 		// Low-health glitch (covers game + HUD). AUTHORED BY: VFX TEAM (Effection)
 		this.glitch.setEnabled(this.lowHealthActive && !this.levelFinished);
@@ -1023,7 +1036,8 @@ if (this.midBoss != null) {
 			drawManager.drawWaveProgress(this,
 					this.stageHud.getWaveRemaining(),
 					this.stageHud.getWaveTotal(),
-					this.stageHud.getWaveProgress());
+					this.stageHud.getWaveProgress(),
+					drawManager.getItemSlotsRight(this.items)); // KAN-34
 		}
 
 		if (this.paused) {
