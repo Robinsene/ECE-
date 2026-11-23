@@ -782,10 +782,6 @@ public final class DrawManager {
 			backBufferGraphics.drawLine(j, 0, j, screen.getHeight() - 1);
 	}
 
-	/** Margin between the score text and the right edge of the screen. */
-	private static final int SCORE_ZONE_MARGIN = 8;
-	/** Horizontal gap between the "SCORE" label and the value. */
-	private static final int SCORE_LABEL_GAP = 8;
 
 	/**
 	 * Draws the current score in the top-right corner, arcade-style: no
@@ -815,7 +811,7 @@ public final class DrawManager {
 	 */
 	public void drawScore(final Screen screen, final int score,
 			final Color valueColor) {
-		int textY = 25;
+		int textY = HudLayout.TOP_ROW_BASELINE;
 
 		backBufferGraphics.setFont(fontRegular);
 		String label = "SCORE";
@@ -823,8 +819,8 @@ public final class DrawManager {
 
 		int scoreWidth = fontRegularMetrics.stringWidth(scoreString);
 		int labelWidth = fontRegularMetrics.stringWidth(label);
-		int scoreX = screen.getWidth() - SCORE_ZONE_MARGIN - scoreWidth;
-		int labelX = scoreX - SCORE_LABEL_GAP - labelWidth;
+		int scoreX = screen.getWidth() - HudLayout.SCORE_ZONE_MARGIN - scoreWidth;
+		int labelX = scoreX - HudLayout.SCORE_LABEL_GAP - labelWidth;
 
 		backBufferGraphics.setColor(Color.WHITE);
 		backBufferGraphics.drawString(label, labelX, textY);
@@ -841,10 +837,6 @@ public final class DrawManager {
 	 * @param lives
 	 *            Current lives.
 	 */
-	/** Horizontal space reserved for the "LIVES" label. */
-	private static final int LIVES_LABEL_WIDTH = 46;
-	/** Horizontal space reserved per life icon. */
-	private static final int LIVES_ICON_SPACING = 35;
 
 	public void drawLives(final Screen screen, final int lives) {
 		drawLives(screen, lives, Color.WHITE, -1, -1);
@@ -872,26 +864,25 @@ public final class DrawManager {
 			final int lostSlot) {
 		backBufferGraphics.setFont(fontRegular);
 		backBufferGraphics.setColor(labelColor);
-		backBufferGraphics.drawString("LIVES", 20, 25);
+		backBufferGraphics.drawString("LIVES", HudLayout.LIVES_X,
+				HudLayout.TOP_ROW_BASELINE);
 
 		Ship dummyShip = new Ship(0, 0, Core.getSelectedShipType());
 		for (int i = 0; i < lives; i++)
 			if (i != hiddenSlot)
-				drawEntity(dummyShip, 20 + LIVES_LABEL_WIDTH
-						+ LIVES_ICON_SPACING * i, 10);
+				drawEntity(dummyShip, HudLayout.LIVES_ICONS_X
+						+ HudLayout.LIVES_ICON_SPACING * i,
+						HudLayout.LIVES_ICON_Y);
 
 		if (lostSlot >= 0) {
 			backBufferGraphics.setColor(Color.RED);
-			backBufferGraphics.drawRect(20 + LIVES_LABEL_WIDTH
-					+ LIVES_ICON_SPACING * lostSlot - 2, 8,
+			backBufferGraphics.drawRect(HudLayout.LIVES_ICONS_X
+					+ HudLayout.LIVES_ICON_SPACING * lostSlot - 2,
+					HudLayout.LIVES_ICON_Y - 2,
 					dummyShip.getWidth() + 3, dummyShip.getHeight() + 3);
 		}
 	}
 
-	/** Baseline Y of the top-centre level indicator, kept off y=25 so it
-	 * doesn't collide with the Currency team's coin balance, which is
-	 * also centred there. */
-	private static final int LEVEL_INDICATOR_Y = 14;
 
 	/**
 	 * Draws the current wave/level number on screen, top-centre, so the
@@ -931,14 +922,10 @@ public final class DrawManager {
 		int valueX = labelX + labelWidth + gap;
 
 		backBufferGraphics.setColor(Color.WHITE);
-		backBufferGraphics.drawString(label, labelX, LEVEL_INDICATOR_Y);
+		backBufferGraphics.drawString(label, labelX, HudLayout.LEVEL_INDICATOR_Y);
 		backBufferGraphics.setColor(valueColor);
-		backBufferGraphics.drawString(valueString, valueX, LEVEL_INDICATOR_Y);
+		backBufferGraphics.drawString(valueString, valueX, HudLayout.LEVEL_INDICATOR_Y);
 	}
-	/** Baseline Y of the best score, above the score (KAN-24). */
-	private static final int BEST_SCORE_Y = 11;
-	/** Gold colour of a beaten record. */
-	private static final Color RECORD_GOLD = new Color(255, 200, 40);
 
 	/**
 	 * Draws the score to beat above the current score (Requirement 8 -
@@ -962,18 +949,12 @@ public final class DrawManager {
 		String text = newBestShowing ? "NEW BEST!" : "BEST " + best;
 		if (newBestShowing && !flashOn)
 			return;
-		int x = screen.getWidth() - SCORE_ZONE_MARGIN
+		int x = screen.getWidth() - HudLayout.SCORE_ZONE_MARGIN
 				- getSmallStringWidth(text);
-		drawSmallString(text, x, BEST_SCORE_Y,
-				beaten ? RECORD_GOLD : Color.GRAY);
+		drawSmallString(text, x, HudLayout.BEST_SCORE_Y,
+				beaten ? HudLayout.RECORD_GOLD : Color.GRAY);
 	}
 
-	/** Top Y of the extra-life bar, under the life icons (KAN-25). */
-	private static final int EXTRA_LIFE_BAR_Y = 31;
-	/** Height of the extra-life bar. */
-	private static final int EXTRA_LIFE_BAR_HEIGHT = 3;
-	/** Width of the extra-life bar (three life slots). */
-	private static final int EXTRA_LIFE_BAR_WIDTH = LIVES_ICON_SPACING * 3 - 9;
 
 	/**
 	 * Draws the progress toward the next extra life as a thin bar under the
@@ -989,23 +970,20 @@ public final class DrawManager {
 	 */
 	public void drawExtraLifeBar(final Screen screen, final float progress,
 			final boolean flashOn) {
-		int x = 20 + LIVES_LABEL_WIDTH;
-		int fill = Math.round(EXTRA_LIFE_BAR_WIDTH
+		int x = HudLayout.LIVES_ICONS_X;
+		int fill = Math.round(HudLayout.EXTRA_LIFE_BAR_WIDTH
 				* Math.max(0f, Math.min(1f, progress)));
 
 		backBufferGraphics.setColor(new Color(40, 60, 40));
-		backBufferGraphics.fillRect(x, EXTRA_LIFE_BAR_Y,
-				EXTRA_LIFE_BAR_WIDTH, EXTRA_LIFE_BAR_HEIGHT);
+		backBufferGraphics.fillRect(x, HudLayout.EXTRA_LIFE_BAR_Y,
+				HudLayout.EXTRA_LIFE_BAR_WIDTH, HudLayout.EXTRA_LIFE_BAR_HEIGHT);
 		backBufferGraphics.setColor(flashOn ? Color.WHITE : Color.GREEN);
 		if (flashOn)
-			fill = EXTRA_LIFE_BAR_WIDTH;
-		backBufferGraphics.fillRect(x, EXTRA_LIFE_BAR_Y, fill,
-				EXTRA_LIFE_BAR_HEIGHT);
+			fill = HudLayout.EXTRA_LIFE_BAR_WIDTH;
+		backBufferGraphics.fillRect(x, HudLayout.EXTRA_LIFE_BAR_Y, fill,
+				HudLayout.EXTRA_LIFE_BAR_HEIGHT);
 	}
 
-	/** Colours of the combo text for multipliers x1 to x4 (KAN-23). */
-	private static final Color[] COMBO_COLORS = { Color.WHITE, Color.GREEN,
-			Color.YELLOW, new Color(255, 120, 30) };
 
 	/**
 	 * Draws the kill combo right-aligned under the HUD (Requirement 8 -
@@ -1040,13 +1018,13 @@ public final class DrawManager {
 		g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER,
 				Math.min(1f, alpha) * baseAlpha));
 
-		Color color = COMBO_COLORS[Math.max(0,
-				Math.min(COMBO_COLORS.length, multiplier) - 1)];
+		Color color = HudLayout.COMBO_COLORS[Math.max(0,
+				Math.min(HudLayout.COMBO_COLORS.length, multiplier) - 1)];
 		Font font = fontRegular.deriveFont(fontRegular.getSize2D() * scale);
 		FontMetrics metrics = g2d.getFontMetrics(font);
 		String label = "COMBO " + combo;
 		String mult = multiplier > 1 ? " x" + multiplier : "";
-		int right = screen.getWidth() - SCORE_ZONE_MARGIN;
+		int right = screen.getWidth() - HudLayout.SCORE_ZONE_MARGIN;
 		int width = metrics.stringWidth(label + mult);
 		int x = right - width;
 
@@ -1063,12 +1041,6 @@ public final class DrawManager {
 		g2d.setComposite(oldComposite);
 	}
 
-	/** Y offset of the diamond counter below the score line. */
-	private static final int DIAMONDS_Y_OFFSET = 11;
-	/** Size, in pixels, of the diamond icon drawn next to the count. */
-	private static final int DIAMOND_ICON_SIZE = 10;
-	/** Gap between the diamond icon and its number. */
-	private static final int DIAMOND_ICON_GAP = 4;
 
 	/**
 	 * Draws the player's current diamond balance, left-aligned under the
@@ -1100,21 +1072,21 @@ public final class DrawManager {
 	public void drawDiamonds(final Screen screen, final int diamonds,
 			final Color textColor) {
 		String valueString = Integer.toString(diamonds);
-		int textY = 25 + DIAMONDS_Y_OFFSET;
+		int textY = HudLayout.TOP_ROW_BASELINE + HudLayout.DIAMONDS_Y_OFFSET;
 		int startX = screen.getWidth() - 60;
-		int iconTop = textY - DIAMOND_ICON_SIZE + 1;
+		int iconTop = textY - HudLayout.DIAMOND_ICON_SIZE + 1;
 
-		int[] xPoints = { startX + DIAMOND_ICON_SIZE / 2, startX + DIAMOND_ICON_SIZE,
-				startX + DIAMOND_ICON_SIZE / 2, startX };
-		int[] yPoints = { iconTop, iconTop + DIAMOND_ICON_SIZE / 2,
-				iconTop + DIAMOND_ICON_SIZE, iconTop + DIAMOND_ICON_SIZE / 2 };
+		int[] xPoints = { startX + HudLayout.DIAMOND_ICON_SIZE / 2, startX + HudLayout.DIAMOND_ICON_SIZE,
+				startX + HudLayout.DIAMOND_ICON_SIZE / 2, startX };
+		int[] yPoints = { iconTop, iconTop + HudLayout.DIAMOND_ICON_SIZE / 2,
+				iconTop + HudLayout.DIAMOND_ICON_SIZE, iconTop + HudLayout.DIAMOND_ICON_SIZE / 2 };
 
 		backBufferGraphics.setColor(Color.CYAN);
 		backBufferGraphics.fillPolygon(xPoints, yPoints, 4);
 		backBufferGraphics.setFont(fontRegular);
 		backBufferGraphics.setColor(textColor);
-		backBufferGraphics.drawString(valueString, startX + DIAMOND_ICON_SIZE
-				+ DIAMOND_ICON_GAP, textY);
+		backBufferGraphics.drawString(valueString, startX + HudLayout.DIAMOND_ICON_SIZE
+				+ HudLayout.DIAMOND_ICON_GAP, textY);
 	}
 
 	/**
@@ -1251,10 +1223,6 @@ public final class DrawManager {
 		this.hudOldTransform = null;
 	}
 
-	/** Background colour of the top HUD bar (KAN-26). */
-	private static final Color HUD_PANEL_COLOR = new Color(8, 24, 12);
-	/** Colour of the separators between HUD sections. */
-	private static final Color HUD_SEPARATOR_COLOR = new Color(30, 90, 40);
 
 	/**
 	 * Draws the background of the top HUD bar (Requirement 8 - Gameplay
@@ -1269,14 +1237,14 @@ public final class DrawManager {
 	 */
 	public void drawHudPanel(final Screen screen, final int height) {
 		int width = screen.getWidth();
-		backBufferGraphics.setColor(HUD_PANEL_COLOR);
+		backBufferGraphics.setColor(HudLayout.HUD_PANEL_COLOR);
 		backBufferGraphics.fillRect(0, 0, width, height);
-		backBufferGraphics.setColor(HUD_SEPARATOR_COLOR);
+		backBufferGraphics.setColor(HudLayout.HUD_SEPARATOR_COLOR);
 		backBufferGraphics.drawLine(0, 0, width, 0);
 
 		// Separators follow the HUD size, so they stay between the zones.
 		float scale = HudSettings.getInstance().getSize().getScale();
-		int left = 20 + LIVES_LABEL_WIDTH + LIVES_ICON_SPACING * 3 + 4;
+		int left = HudLayout.LIVES_ICONS_X + HudLayout.LIVES_ICON_SPACING * 3 + 4;
 		int right = width - (left - 8);
 		for (int x : new int[] { left, right }) {
 			x = Math.round(width / 2f + (x - width / 2f) * scale);
@@ -2249,10 +2217,6 @@ public final class DrawManager {
 		return new int[] { image.length, image[0].length };
 	}
 
-	/** Width of the wave progress bar (KAN-29). */
-	private static final int WAVE_BAR_WIDTH = 70;
-	/** Baseline Y of the wave counter, centred in the item HUD row. */
-	private static final int WAVE_TEXT_Y = 52;
 
 	/**
 	 * Draws the wave progress in the middle of the item HUD row
@@ -2275,15 +2239,15 @@ public final class DrawManager {
 		String text = "ENEMIES " + remaining + "/" + total;
 		int centerX = screen.getWidth() / 2;
 		drawSmallString(text, centerX - getSmallStringWidth(text) / 2,
-				WAVE_TEXT_Y, Color.WHITE);
+				HudLayout.WAVE_TEXT_Y, Color.WHITE);
 
-		int barX = centerX - WAVE_BAR_WIDTH / 2;
-		int barY = WAVE_TEXT_Y + 3;
+		int barX = centerX - HudLayout.WAVE_BAR_WIDTH / 2;
+		int barY = HudLayout.WAVE_TEXT_Y + 3;
 		backBufferGraphics.setColor(new Color(60, 60, 60));
-		backBufferGraphics.fillRect(barX, barY, WAVE_BAR_WIDTH, 2);
+		backBufferGraphics.fillRect(barX, barY, HudLayout.WAVE_BAR_WIDTH, 2);
 		backBufferGraphics.setColor(remaining <= total / 5 ? Color.YELLOW
 				: Color.GREEN);
-		backBufferGraphics.fillRect(barX, barY, Math.round(WAVE_BAR_WIDTH
+		backBufferGraphics.fillRect(barX, barY, Math.round(HudLayout.WAVE_BAR_WIDTH
 				* Math.max(0f, Math.min(1f, progress))), 2);
 	}
 
