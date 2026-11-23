@@ -326,13 +326,18 @@ public final class DrawManager {
 			return;
 
 		Graphics2D g2d = (Graphics2D) backBufferGraphics;
+		// Combine with the alpha already in use (e.g. the HUD opacity,
+		// Team ECE - KAN-28) and put it back afterwards.
+		java.awt.Composite previous = g2d.getComposite();
+		float baseAlpha = previous instanceof AlphaComposite
+				? ((AlphaComposite) previous).getAlpha() : 1f;
 		g2d.setComposite(AlphaComposite.getInstance(
-				AlphaComposite.SRC_OVER, alpha));
+				AlphaComposite.SRC_OVER, alpha * baseAlpha));
 
 		drawSprite(entity.getSpriteType(), positionX, positionY,
 				entity.getColor());
 
-		g2d.setComposite(AlphaComposite.SrcOver); // back to normal
+		g2d.setComposite(previous); // back to what it was
 	}
 
 	/**
@@ -1030,8 +1035,10 @@ public final class DrawManager {
 			return;
 		Graphics2D g2d = (Graphics2D) backBufferGraphics;
 		java.awt.Composite oldComposite = g2d.getComposite();
+		float baseAlpha = oldComposite instanceof AlphaComposite
+				? ((AlphaComposite) oldComposite).getAlpha() : 1f;
 		g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER,
-				Math.min(1f, alpha)));
+				Math.min(1f, alpha) * baseAlpha));
 
 		Color color = COMBO_COLORS[Math.max(0,
 				Math.min(COMBO_COLORS.length, multiplier) - 1)];
@@ -1147,6 +1154,133 @@ public final class DrawManager {
 			backBufferGraphics.setColor(selected ? Color.GREEN : Color.WHITE);
 			drawCenteredRegularString(screen, line,
 					boxY + spacing * (i + 3));
+		}
+	}
+
+	/**
+	 * Draws a summary of the run under the pause menu (Requirement 8 -
+	 * Gameplay HUD, KAN-27), in the same style as the menu box.
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param labels
+	 *            Name of each stat.
+	 * @param values
+	 *            Value of each stat, same order as the labels.
+	 * @param optionCount
+	 *            Number of options in the pause menu above, to place the
+	 *            summary right under it.
+	 */
+	public void drawPauseSummary(final Screen screen, final String[] labels,
+			final String[] values, final int optionCount) {
+		int spacing = menuItemSpacing();
+		int boxWidth = screen.getWidth() * 3 / 4;
+		int menuHeight = spacing * (optionCount + 3);
+		int boxX = (screen.getWidth() - boxWidth) / 2;
+		int boxY = (screen.getHeight() + menuHeight) / 2 + 8;
+		int lineHeight = getSmallLineHeight() + 2;
+		int boxHeight = lineHeight * labels.length + 16;
+
+		backBufferGraphics.setColor(Color.BLACK);
+		backBufferGraphics.fillRect(boxX, boxY, boxWidth, boxHeight);
+		backBufferGraphics.setColor(Color.DARK_GRAY);
+		backBufferGraphics.drawRect(boxX, boxY, boxWidth, boxHeight);
+
+		for (int i = 0; i < labels.length; i++) {
+			int baseline = boxY + 12 + lineHeight * i + lineHeight / 2;
+			drawSmallString(labels[i], boxX + 14, baseline, Color.GRAY);
+			drawSmallString(values[i], boxX + boxWidth - 14
+					- getSmallStringWidth(values[i]), baseline, Color.WHITE);
+		}
+	}
+
+	/** Composite in use before {@link #beginHud}, restored by endHud. */
+	private java.awt.Composite hudOldComposite;
+	/** Transform in use before {@link #beginHudScale}. */
+	private java.awt.geom.AffineTransform hudOldTransform;
+
+	/**
+	 * Starts drawing the gameplay HUD with the player's opacity
+	 * (Requirement 8 - Gameplay HUD, KAN-28). Every HUD element drawn until
+	 * {@link #endHud} is blended with it.
+	 *
+	 * @param opacity
+	 *            Opacity from 0 to 1.
+	 */
+	public void beginHud(final float opacity) {
+		Graphics2D g2d = (Graphics2D) backBufferGraphics;
+		this.hudOldComposite = g2d.getComposite();
+		if (opacity < 1f)
+			g2d.setComposite(AlphaComposite.getInstance(
+					AlphaComposite.SRC_OVER, Math.max(0f, opacity)));
+	}
+
+	/** Ends the HUD started by {@link #beginHud}. */
+	public void endHud() {
+		if (this.hudOldComposite != null)
+			((Graphics2D) backBufferGraphics)
+					.setComposite(this.hudOldComposite);
+		this.hudOldComposite = null;
+	}
+
+	/**
+	 * Scales the top HUD bar around its top centre (KAN-28), so a smaller
+	 * HUD stays centred and leaves more room on the sides.
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param scale
+	 *            Scale factor (1 = normal size).
+	 */
+	public void beginHudScale(final Screen screen, final float scale) {
+		Graphics2D g2d = (Graphics2D) backBufferGraphics;
+		this.hudOldTransform = g2d.getTransform();
+		if (scale != 1f) {
+			double centerX = screen.getWidth() / 2.0;
+			g2d.translate(centerX, 0);
+			g2d.scale(scale, scale);
+			g2d.translate(-centerX, 0);
+		}
+	}
+
+	/** Ends the scaling started by {@link #beginHudScale}. */
+	public void endHudScale() {
+		if (this.hudOldTransform != null)
+			((Graphics2D) backBufferGraphics)
+					.setTransform(this.hudOldTransform);
+		this.hudOldTransform = null;
+	}
+
+	/** Background colour of the top HUD bar (KAN-26). */
+	private static final Color HUD_PANEL_COLOR = new Color(8, 24, 12);
+	/** Colour of the separators between HUD sections. */
+	private static final Color HUD_SEPARATOR_COLOR = new Color(30, 90, 40);
+
+	/**
+	 * Draws the background of the top HUD bar (Requirement 8 - Gameplay
+	 * HUD, KAN-26): a dark green strip with a light top edge and two thin
+	 * separators, between the lives and the level, and between the level
+	 * and the score, so the three zones read as one bar.
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param height
+	 *            Height of the bar (the separation line's Y).
+	 */
+	public void drawHudPanel(final Screen screen, final int height) {
+		int width = screen.getWidth();
+		backBufferGraphics.setColor(HUD_PANEL_COLOR);
+		backBufferGraphics.fillRect(0, 0, width, height);
+		backBufferGraphics.setColor(HUD_SEPARATOR_COLOR);
+		backBufferGraphics.drawLine(0, 0, width, 0);
+
+		// Separators follow the HUD size, so they stay between the zones.
+		float scale = HudSettings.getInstance().getSize().getScale();
+		int left = 20 + LIVES_LABEL_WIDTH + LIVES_ICON_SPACING * 3 + 4;
+		int right = width - (left - 8);
+		for (int x : new int[] { left, right }) {
+			x = Math.round(width / 2f + (x - width / 2f) * scale);
+			backBufferGraphics.drawLine(x, 6, x, height - 7);
 		}
 	}
 

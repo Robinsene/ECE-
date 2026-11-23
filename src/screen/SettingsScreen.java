@@ -2,6 +2,7 @@ package screen;
 
 import engine.Cooldown;
 import engine.Core;
+import engine.HudSettings;
 import java.awt.event.KeyEvent;
 import engine.soundEngine.Sound;
 import engine.soundEngine.SoundManager;
@@ -20,6 +21,10 @@ public class SettingsScreen extends Screen {
 	private final SoundManager soundManager = SoundManager.getInstance();
 	/** Current selected menu item. */
 	private int currentMenuItem = 0;
+	/** Rows that can be selected: BGM, SFX, HUD opacity, HUD size. */
+	private static final int SELECTABLE_ROWS = 4;
+	/** Gameplay HUD options (Team ECE - KAN-28). */
+	private final HudSettings hudSettings = HudSettings.getInstance();
 
 	/**
 	 * Constructor, establishes the properties of the screen.
@@ -55,6 +60,22 @@ public class SettingsScreen extends Screen {
 		this.soundManager.setVolume(category, percent / 100f);
 	}
 	/**
+	 * Changes the selected row: volume by 10 points, or the next HUD
+	 * opacity / size step (Team ECE - KAN-28).
+	 *
+	 * @param direction
+	 *            -1 for left, +1 for right.
+	 */
+	private void adjustSelected(final int direction) {
+		if (this.currentMenuItem == 2)
+			this.hudSettings.stepOpacity(direction);
+		else if (this.currentMenuItem == 3)
+			this.hudSettings.stepSize(direction);
+		else
+			adjustSelectedVolume(10 * direction);
+	}
+
+	/**
 	 * Starts the action.
 	 *
 	 * @return Next screen code.
@@ -77,25 +98,26 @@ public class SettingsScreen extends Screen {
 
 		if (this.selectionCooldown.checkFinished()) {
 			if (this.inputManager.isKeyDown(KeyEvent.VK_UP)) {
-				currentMenuItem = (currentMenuItem + 1) % 2;
+				currentMenuItem = (currentMenuItem + SELECTABLE_ROWS - 1)
+						% SELECTABLE_ROWS;
 				this.selectionCooldown.reset();
 			} else if (this.inputManager.isKeyDown(KeyEvent.VK_DOWN)) {
-				currentMenuItem = (currentMenuItem + 1) % 2;
+				currentMenuItem = (currentMenuItem + 1) % SELECTABLE_ROWS;
 				this.selectionCooldown.reset();
 			}
 
 			if (this.inputManager.isKeyDown(KeyEvent.VK_LEFT)) {
-				adjustSelectedVolume(-10);
+				adjustSelected(-1);
 				this.selectionCooldown.reset();
 			} else if (this.inputManager.isKeyDown(KeyEvent.VK_RIGHT)) {
-				adjustSelectedVolume(10);
+				adjustSelected(1);
 				this.selectionCooldown.reset();
 			}
 		}
 
 		if (this.inputManager.isMouseMoved()) {
 			int mouseY = this.inputManager.getMouseY();
-			for (int row = 0; row < 2; row++)
+			for (int row = 0; row < SELECTABLE_ROWS; row++)
 				if (this.drawManager.isOnMenuRow(rowBaseline(row), SPACING,
 						mouseY))
 					currentMenuItem = row;
@@ -134,16 +156,23 @@ public class SettingsScreen extends Screen {
 		this.drawManager.drawMenuRow(this, sfxStr, rowBaseline(1),
 				currentMenuItem == 1);
 
-		this.drawManager.drawMenuRow(this, m2, rowBaseline(3), false);
+		this.drawManager.drawMenuRow(this, "HUD Opacity: "
+				+ this.hudSettings.getOpacityPercent() + "%", rowBaseline(2),
+				currentMenuItem == 2);
+		this.drawManager.drawMenuRow(this, "HUD Size: "
+				+ this.hudSettings.getSize().getLabel(), rowBaseline(3),
+				currentMenuItem == 3);
+
+		this.drawManager.drawMenuRow(this, m2, rowBaseline(5), false);
 
 		this.drawManager.drawMenuRow(this, "- Move Left: A / Left Arrow -",
-				rowBaseline(4), false);
-		this.drawManager.drawMenuRow(this, "- Move Right: D / Right Arrow -",
-				rowBaseline(5), false);
-		this.drawManager.drawMenuRow(this, "- Shoot: Space -",
 				rowBaseline(6), false);
-		this.drawManager.drawMenuRow(this, "- Back: ESC -",
+		this.drawManager.drawMenuRow(this, "- Move Right: D / Right Arrow -",
 				rowBaseline(7), false);
+		this.drawManager.drawMenuRow(this, "- Shoot: Space -",
+				rowBaseline(8), false);
+		this.drawManager.drawMenuRow(this, "- Back: ESC -",
+				rowBaseline(9), false);
 		this.drawManager.drawKeyHints(this, "arrows adjust, esc back");
 
 		this.drawManager.completeDrawing(this);

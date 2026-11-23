@@ -247,6 +247,10 @@ public class GameScreen extends Screen {
 	private GlitchEffect glitch;
 	/** HUD animations: score count-up, life blink, level pulse, etc. */
 	private HudAnimator hudAnimator;
+	/** Time the game was paused, or -1 (Team ECE - KAN-27). */
+	private long pausedAt = -1;
+	/** Total paused time this stage, in ms (Team ECE - KAN-27). */
+	private long pausedTotal;
 	/** Animated coin / diamond balances (Team ECE - KAN-10). */
 	private engine.CurrencyHud currencyHud;
 	/** Kill combo and score multiplier (Team ECE - KAN-23). */
@@ -410,6 +414,8 @@ public class GameScreen extends Screen {
 
 		// Special input delay / countdown.
 		this.gameStartTime = System.currentTimeMillis();
+		this.pausedAt = -1; // stage time restarts with the level (KAN-27)
+		this.pausedTotal = 0;
 		this.inputDelay = Core.getCooldown(INPUT_DELAY);
 		this.inputDelay.reset();
 	}
@@ -465,6 +471,7 @@ public class GameScreen extends Screen {
 		if (inputManager.isKeyDown(KeyEvent.VK_P)
 				&& this.pauseKeyCooldown.checkFinished()) {
 			this.paused = !this.paused;
+			trackPauseTime(); // Team ECE - KAN-27
 			this.pauseKeyCooldown.reset();
 			this.pauseSelection = PauseOption.RESUME;
 			this.logger.info(this.paused ? "Game paused" : "Game resumed");
@@ -827,6 +834,34 @@ public class GameScreen extends Screen {
 	}
 
 	/**
+	 * Adds up the time spent paused, so the stage time shown in the pause
+	 * menu only counts play (Team ECE - KAN-27). Called on each pause
+	 * toggle.
+	 */
+	private void trackPauseTime() {
+		long now = System.currentTimeMillis();
+		if (this.paused) {
+			this.pausedAt = now;
+		} else if (this.pausedAt >= 0) {
+			this.pausedTotal += now - this.pausedAt;
+			this.pausedAt = -1;
+		}
+	}
+
+	/**
+	 * @return Play time of this stage as m:ss, from the end of the
+	 *         countdown and without pauses (Team ECE - KAN-27).
+	 */
+	private String formatStageTime() {
+		long end = this.pausedAt >= 0 ? this.pausedAt
+				: System.currentTimeMillis();
+		long played = Math.max(0, end - this.gameStartTime - INPUT_DELAY
+				- this.pausedTotal);
+		long seconds = played / 1000;
+		return String.format("%d:%02d", seconds / 60, seconds % 60);
+	}
+
+	/**
 	 * Restarts the current level: score, lives, bullets shot, ships
 	 * destroyed and pending diamonds go back to what they were when the
 	 * level began, and every on-screen element is rebuilt from scratch.
@@ -909,6 +944,12 @@ if (this.midBoss != null) {
 		if (this.inputDelay.checkFinished())
 			this.hudAnimator.startLevel(now);
 
+		// Player's HUD opacity and size, and the top bar background
+		// (Team ECE - KAN-26, KAN-28).
+		engine.HudSettings hudSettings = engine.HudSettings.getInstance();
+		drawManager.beginHud(hudSettings.getOpacity());
+		drawManager.drawHudPanel(this, SEPARATION_LINE_HEIGHT - 1);
+		drawManager.beginHudScale(this, hudSettings.getSize().getScale());
 		drawManager.drawScore(this, this.hudAnimator.getDisplayedScore(),
 				this.hudAnimator.isScoreFlashing(now) ? Color.YELLOW
 						: Color.GREEN);
@@ -935,6 +976,7 @@ if (this.midBoss != null) {
 		// the level indicator.
 		this.currencyHud.update(coins, diamonds, now);
 		drawManager.drawCurrencyHud(this, this.currencyHud);
+		drawManager.endHudScale();
 		drawManager.drawHorizontalLine(this, SEPARATION_LINE_HEIGHT - 1);
 		drawManager.drawItemHud(this, this.items); // Item System (Team CS)
 		// Boss health bar: fixed overlay a row below the item HUD slots
@@ -950,6 +992,7 @@ if (this.midBoss != null) {
 					this.comboTracker.getScale(now),
 					this.comboTracker.getTimeLeft(now),
 					this.midBoss != null ? COMBO_BASELINE_BOSS : COMBO_BASELINE);
+		drawManager.endHud();
 		// Low-health glitch (covers game + HUD). AUTHORED BY: VFX TEAM (Effection)
 		this.glitch.setEnabled(this.lowHealthActive && !this.levelFinished);
 		drawManager.drawGlitch(this, this.glitch);
@@ -960,6 +1003,16 @@ if (this.midBoss != null) {
 					PauseOption.QUIT.getLabel() };
 			drawManager.drawPauseMenu(this, options,
 					this.pauseSelection.ordinal());
+			// Run summary under the menu (Team ECE - KAN-27).
+			drawManager.drawPauseSummary(this,
+					new String[] { "SCORE", "STAGE", "ENEMIES KILLED",
+							"STAGE TIME", "COINS THIS RUN" },
+					new String[] { Integer.toString(this.score),
+							Integer.toString(this.level),
+							Integer.toString(this.shipsDestroyed),
+							formatStageTime(),
+							Integer.toString(this.coinsCollected) },
+					options.length);
 			drawManager.drawKeyHints(this,
 					"w+s / arrows to move, space to select, P to resume");
 		}
