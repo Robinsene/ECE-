@@ -8,6 +8,7 @@ import java.util.Map;
 /**
  * Simple hub for game moments that many teams need.
  * Example: PLAYER_HIT (value = lives left after the hit).
+ * The gameplay HUD listens to these through HudEvents (Team ECE - KAN-38).
  *
  * Usage:
  *   GameEvents.subscribe(GameEvents.Type.PLAYER_HIT, listener);
@@ -18,7 +19,14 @@ public final class GameEvents {
 	/** Event types. */
 	public enum Type {
 		/** Enemy bullet hit the player ship. */
-		PLAYER_HIT
+		PLAYER_HIT,
+		/** An enemy, the special ship or a boss was destroyed (value =
+		 * base points of the kill). */
+		ENEMY_KILLED,
+		/** A stage starts or restarts (value = level number). */
+		LEVEL_START,
+		/** Coins were picked up (value = coins gained). */
+		COIN_GAINED
 	}
 
 	/** Receives events. */
@@ -29,7 +37,8 @@ public final class GameEvents {
 		 * @param type
 		 *            Event type.
 		 * @param value
-		 *            Extra data (PLAYER_HIT: lives left).
+		 *            Extra data (PLAYER_HIT: lives left, ENEMY_KILLED:
+		 *            points, LEVEL_START: level, COIN_GAINED: coins).
 		 */
 		void onEvent(Type type, int value);
 	}

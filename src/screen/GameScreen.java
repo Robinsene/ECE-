@@ -249,6 +249,10 @@ public class GameScreen extends Screen {
 	private long pausedTotal;
 	/** Animated coin / diamond balances (Team ECE - KAN-10). */
 	private engine.CurrencyHud currencyHud;
+	/** HUD listeners on the GameEvents bus (Team ECE - KAN-38). */
+	private engine.HudEvents hudEvents;
+	/** "+N" coin popups flying to the coin balance (Team ECE - KAN-39). */
+	private engine.PickupPopups pickupPopups;
 	/** Kill combo and score multiplier (Team ECE - KAN-23). */
 	private engine.ComboTracker comboTracker;
 	/** Score to beat and "NEW BEST!" flash (Team ECE - KAN-24). */
@@ -388,6 +392,13 @@ public class GameScreen extends Screen {
 		this.hudAnimator = new HudAnimator();
 		this.currencyHud = new engine.CurrencyHud();
 		this.comboTracker = new engine.ComboTracker();
+		// HUD reacts to game events; a restart replaces the old listener
+		// (Team ECE - KAN-38).
+		if (this.hudEvents != null)
+			this.hudEvents.detach();
+		this.hudEvents = new engine.HudEvents(this.comboTracker);
+		this.hudEvents.attach();
+		this.pickupPopups = new engine.PickupPopups(); // KAN-39
 		this.bestScoreTracker = engine.BestScoreTracker.fromHighScores(
 				this.score, this.logger);
 		this.extraLifeTracker = new engine.ExtraLifeTracker(this.score);
@@ -421,6 +432,9 @@ public class GameScreen extends Screen {
 		this.pausedTotal = 0;
 		this.inputDelay = Core.getCooldown(INPUT_DELAY);
 		this.inputDelay.reset();
+		// Stage 1 starts a new run timer (Team ECE - KAN-37, KAN-38).
+		engine.RunStats.hold();
+		GameEvents.emit(GameEvents.Type.LEVEL_START, this.level);
 	}
 
 	/**
@@ -446,6 +460,8 @@ public class GameScreen extends Screen {
 			super.run();
 		} finally {
 			GameEvents.unsubscribe(GameEvents.Type.PLAYER_HIT, this.damageDim);
+			if (this.hudEvents != null)
+				this.hudEvents.detach(); // Team ECE - KAN-38
 		}
 
 		this.items.endLevel(); // Item System (Team CS)
@@ -482,12 +498,14 @@ public class GameScreen extends Screen {
 
 		if (this.paused) {
 			this.comboTracker.holdDuringPause(System.currentTimeMillis()); // KAN-23
+			engine.RunStats.hold(); // the run timer stops too (KAN-37)
 			updatePauseMenu();
 			draw();
 			return;
 		}
 
 		if (this.inputDelay.checkFinished() && !this.levelFinished) {
+			engine.RunStats.tick(System.currentTimeMillis()); // KAN-37
 
 			if (!this.ship.isDestroyed()) {
 				boolean moveRight = inputManager.isKeyDown(KeyEvent.VK_RIGHT)
@@ -868,6 +886,7 @@ public class GameScreen extends Screen {
 		int multiplier = this.comboTracker
 				.registerKill(System.currentTimeMillis());
 		this.score += points * multiplier;
+		GameEvents.emit(GameEvents.Type.ENEMY_KILLED, points); // KAN-38
 	}
 
 	/**
@@ -1041,6 +1060,12 @@ if (this.midBoss != null) {
 		drawManager.endHudScale();
 		drawManager.drawHorizontalLine(this, SEPARATION_LINE_HEIGHT - 1);
 		drawManager.drawItemHud(this, this.items); // Item System (Team CS)
+		// Run timer and kill counter, bottom left (Team ECE - KAN-37), and
+		// "+N" coin popups on their way to the balance (KAN-39).
+		drawManager.drawRunStats(this, engine.RunStats.getPlayMillis(),
+				this.shipsDestroyed,
+				animated && this.hudEvents.isKillFlashOn(now));
+		drawManager.drawPickupPopups(this.pickupPopups, now);
 		// Boss health bar: fixed overlay a row below the item HUD slots
 		// (y 43-59, Team CS), so the two never collide.
 		drawManager.drawBossHealthBar(this, this.midBoss,
@@ -1203,7 +1228,6 @@ if (this.midBoss != null) {
 						this.lives--;
 						this.tookDamage = true; // Survivor tiers (Mantis)
 						GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives); // AUTHORED BY: VFX TEAM (Effection)
-						this.comboTracker.breakCombo(System.currentTimeMillis()); // KAN-23
 						this.logger.info("Hit on player ship, " + this.lives
 								+ " lives remaining.");
 					}
@@ -1216,6 +1240,7 @@ if (this.midBoss != null) {
 						this.score += this.midBoss.manageCollisionsBoss(bullet);
 						if (this.midBoss.isDestroyed()) {
 							this.shipsDestroyed++;
+							GameEvents.emit(GameEvents.Type.ENEMY_KILLED, 0); // KAN-38
 							this.screenShake.trigger();
 							showUnlockedAchievement(Core.getAchievementManager()
 									.recordBossDefeated());
@@ -1316,6 +1341,7 @@ if (this.midBoss != null) {
 			if (this.lives > 0 && !this.ship.isDestroyed()
 					&& checkCollision(coin, this.ship)) {
 				CurrencyManager.getInstance().addCoins(coin.getValue());
+				coinGained(coin); // Team ECE - KAN-38, KAN-39
 				this.coinsCollectedThisLevel += coin.getValue();
 				this.coinsCollected += coin.getValue();
 				recyclable.add(coin);
@@ -1352,6 +1378,24 @@ if (this.midBoss != null) {
 	}
 
 	/**
+	 * Tells the HUD a coin was picked up: COIN_GAINED event and a "+N"
+	 * popup flying from the coin to the coin balance (Team ECE - KAN-38,
+	 * KAN-39).
+	 *
+	 * @param coin
+	 *            Coin picked up.
+	 */
+	private void coinGained(final Coin coin) {
+		GameEvents.emit(GameEvents.Type.COIN_GAINED, coin.getValue());
+		if (engine.HudSettings.getInstance().isAnimated())
+			this.pickupPopups.add(coin.getValue(), Color.YELLOW,
+					coin.getPositionX() + coin.getWidth() / 2,
+					coin.getPositionY(), this.width / 2,
+					engine.HudLayout.PICKUP_POPUP_TARGET_Y,
+					System.currentTimeMillis());
+	}
+
+	/**
 	 * Collects every coin still on screen at once, used when the level is
 	 * cleared so drops from the last enemies aren't lost.
 	 */
@@ -1359,8 +1403,10 @@ if (this.midBoss != null) {
 		if (this.coins.isEmpty())
 			return;
 		int total = 0;
-		for (Coin coin : this.coins)
+		for (Coin coin : this.coins) {
 			total += coin.getValue();
+			coinGained(coin); // Team ECE - KAN-38, KAN-39
+		}
 		CurrencyManager.getInstance().addCoins(total);
 		this.coinsCollectedThisLevel += total;
 		this.coinsCollected += total;

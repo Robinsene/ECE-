@@ -88,6 +88,15 @@ public final class HudLayout {
 	public static final int COMBO_BASELINE_UNDER_POPUP = 106;
 	/** Smallest gap between the item slots and the wave counter. */
 	public static final int WAVE_MIN_GAP = 10;
+	/** Left X of the run timer and kill counter (KAN-37). */
+	public static final int RUN_STATS_X = 8;
+	/** Gap between the run stats baseline and the bottom of the screen;
+	 * the ship sits from 30 px above the bottom, so this stays clear. */
+	public static final int RUN_STATS_BOTTOM_MARGIN = 6;
+	/** Gap between the timer and the kill counter. */
+	public static final int RUN_STATS_GAP = 14;
+	/** Y the "+N" coin popups fly to, just above the coin balance (KAN-39). */
+	public static final int PICKUP_POPUP_TARGET_Y = 30;
 
 	// --- Colours ---
 

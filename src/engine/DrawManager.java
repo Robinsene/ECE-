@@ -2138,6 +2138,82 @@ public final class DrawManager {
 					System.currentTimeMillis());
 	}
 
+	/**
+	 * Draws the run timer and the kill counter in the bottom-left corner
+	 * (Requirement 8 - Gameplay HUD, KAN-37).
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param playMillis
+	 *            Play time of the run, in ms.
+	 * @param kills
+	 *            Enemies destroyed during the run.
+	 * @param killFlash
+	 *            True to flash the kill counter after a kill.
+	 */
+	public void drawRunStats(final Screen screen, final long playMillis,
+			final int kills, final boolean killFlash) {
+		Font font = smallFont();
+		backBufferGraphics.setFont(font);
+		FontMetrics metrics = backBufferGraphics.getFontMetrics(font);
+		int y = screen.getHeight() - HudLayout.RUN_STATS_BOTTOM_MARGIN;
+		int x = HudLayout.RUN_STATS_X;
+
+		String timeLabel = "TIME ";
+		String timeValue = RunStats.format(playMillis);
+		backBufferGraphics.setColor(Color.GRAY);
+		backBufferGraphics.drawString(timeLabel, x, y);
+		x += metrics.stringWidth(timeLabel);
+		backBufferGraphics.setColor(Color.WHITE);
+		backBufferGraphics.drawString(timeValue, x, y);
+		x += metrics.stringWidth(timeValue) + HudLayout.RUN_STATS_GAP;
+
+		String killLabel = "KILLS ";
+		backBufferGraphics.setColor(Color.GRAY);
+		backBufferGraphics.drawString(killLabel, x, y);
+		x += metrics.stringWidth(killLabel);
+		backBufferGraphics.setColor(killFlash ? Color.YELLOW : Color.WHITE);
+		backBufferGraphics.drawString(Integer.toString(kills), x, y);
+	}
+
+	/**
+	 * Draws the "+N" pickup popups flying to the currency HUD
+	 * (Requirement 8 - Gameplay HUD, KAN-39).
+	 *
+	 * @param popups
+	 *            Popups to draw.
+	 * @param now
+	 *            Current time in ms.
+	 */
+	public void drawPickupPopups(final PickupPopups popups, final long now) {
+		if (popups == null)
+			return;
+		java.util.List<PickupPopups.Popup> active = popups.getActive(now);
+		if (active.isEmpty())
+			return;
+		Graphics2D g2d = (Graphics2D) backBufferGraphics;
+		java.awt.Composite oldComposite = g2d.getComposite();
+		float baseAlpha = oldComposite instanceof AlphaComposite
+				? ((AlphaComposite) oldComposite).getAlpha() : 1f;
+		Font font = smallFont();
+		g2d.setFont(font);
+		FontMetrics metrics = g2d.getFontMetrics(font);
+		for (PickupPopups.Popup popup : active) {
+			float alpha = popup.getAlpha(now) * baseAlpha;
+			if (alpha <= 0f)
+				continue;
+			g2d.setComposite(AlphaComposite.getInstance(
+					AlphaComposite.SRC_OVER, alpha));
+			int x = popup.getX(now) - metrics.stringWidth(popup.getText()) / 2;
+			int y = popup.getY(now);
+			g2d.setColor(Color.BLACK);
+			g2d.drawString(popup.getText(), x + 1, y + 1);
+			g2d.setColor(popup.getColor());
+			g2d.drawString(popup.getText(), x, y);
+		}
+		g2d.setComposite(oldComposite);
+	}
+
 	/** Point size of the small text used in the shop and Customize panels. */
 	private static final float SMALL_FONT_SIZE = 8f;
 	/** Small version of the regular game font, made on first use. */
