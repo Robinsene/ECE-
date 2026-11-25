@@ -465,6 +465,7 @@ public class GameScreen extends Screen {
 			GameEvents.unsubscribe(GameEvents.Type.PLAYER_HIT, this.damageDim);
 			if (this.hudEvents != null)
 				this.hudEvents.detach(); // Team ECE - KAN-38
+			engine.BossMusic.apply(null); // no boss music outside the stage
 		}
 
 		this.items.endLevel(); // Item System (Team CS)
@@ -489,6 +490,7 @@ public class GameScreen extends Screen {
 				this.items.movementSpeedBonus(this.ship.getBaseSpeed()));
 		// Animated skins (GoG); plain skins return the same colour.
 		this.ship.setSkinColor(this.skin.colorAt(System.currentTimeMillis()));
+		updateBossMusic();
 
 		if (inputManager.isKeyDown(KeyEvent.VK_P)
 				&& this.pauseKeyCooldown.checkFinished()) {
@@ -1380,6 +1382,19 @@ if (this.midBoss != null) {
 		this.coinsCollectedThisLevel = 0;
 		CoinPool.recycle(this.coins);
 		this.coins.clear();
+	}
+
+	/**
+	 * Plays the tense boss music while a boss fights, the faster track in
+	 * its last phase, and stops it when the boss or the player dies
+	 * (Team ECE - KAN-47).
+	 */
+	private void updateBossMusic() {
+		if (this.midBoss == null)
+			return;
+		engine.BossMusic.apply(engine.BossMusic.trackFor(
+				!this.midBoss.isDestroyed(), this.lives > 0,
+				this.bossHud.getPhase(), this.bossHud.getPhaseCount()));
 	}
 
 	/**

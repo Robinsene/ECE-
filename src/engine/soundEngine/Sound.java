@@ -47,7 +47,11 @@ public enum Sound {
 	/** Background music played during a run. */
 	BGM_GAME("sounds/bgm_game.wav", Category.BGM),
 	/** Background music of the shop and other menus. */
-	BGM_MENU("sounds/bgm_menu.wav", Category.BGM);
+	BGM_MENU("sounds/bgm_menu.wav", Category.BGM),
+	/** Tense music of the boss stages (levels 5 and 10). */
+	BGM_BOSS("sounds/bgm_boss.wav", Category.BGM),
+	/** Faster, louder boss music for the boss's last phase. */
+	BGM_BOSS_FINAL_PHASE("sounds/bgm_boss_final_phase.wav", Category.BGM);
 
 	/**
 	 * Sound categories, used to apply separate volumes.
