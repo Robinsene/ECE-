@@ -69,7 +69,7 @@ file first to start from the default HUD options.
 - To do before the final demo (December 8): one full pass of the checklist
   on Windows with the latest `main`.
 
-Bug found during the run, logged in Jira:
+Bug found during the run, logged in Jira as KAN-48:
 
 - Restarting a stage from the pause menu subscribes the damage dim effect to
   `PLAYER_HIT` again without removing the old one, so each restart adds one
