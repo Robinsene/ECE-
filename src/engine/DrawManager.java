@@ -732,6 +732,80 @@ public final class DrawManager {
 	}
 	
 	/**
+	 * Draws the boss health bar split into phases (Requirement 8 -
+	 * Gameplay HUD, KAN-20): "BOSS  PHASE n/m" above a bar with a divider
+	 * between phases, a fill colour per phase, a light trail that shows the
+	 * HP just lost, a white flash on each hit, and a cyan shield gauge on
+	 * top when the boss has a shield.
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param boss
+	 *            Boss of the stage.
+	 * @param positionY
+	 *            Baseline Y of the label; the bar sits right under it.
+	 * @param hud
+	 *            Phase, trail, flash and shield state.
+	 * @param now
+	 *            Current time in ms.
+	 */
+	public void drawBossHud(final Screen screen, final Boss boss,
+			final int positionY, final BossHud hud, final long now) {
+		if (boss == null || boss.isDestroyed())
+			return;
+		int maxHp = Math.max(1, boss.getMaxHp());
+		int hp = Math.max(0, Math.min(boss.getHp(), maxHp));
+		int phases = hud.getPhaseCount();
+		int phase = hud.getPhase();
+
+		int barWidth = (int) (screen.getWidth() * BOSS_BAR_WIDTH_RATIO);
+		int barX = (screen.getWidth() - barWidth) / 2;
+		int barY = positionY + BOSS_BAR_GAP;
+
+		backBufferGraphics.setFont(fontRegular);
+		backBufferGraphics.setColor(hud.isPhasePulseOn(now) ? Color.YELLOW
+				: Color.WHITE);
+		drawCenteredRegularString(screen, "BOSS  PHASE " + phase + "/"
+				+ phases, positionY);
+
+		// Damage trail, then the HP fill on top of it.
+		int trailWidth = Math.round(barWidth
+				* Math.min(maxHp, hud.getTrailHp(now)) / maxHp);
+		int fillWidth = barWidth * hp / maxHp;
+		backBufferGraphics.setColor(new Color(255, 190, 190));
+		if (trailWidth > fillWidth)
+			backBufferGraphics.fillRect(barX + fillWidth, barY,
+					trailWidth - fillWidth, BOSS_BAR_HEIGHT);
+		Color fill = hud.isHitFlashOn(now) ? Color.WHITE
+				: HudLayout.BOSS_PHASE_COLORS[Math.min(
+						HudLayout.BOSS_PHASE_COLORS.length, phase) - 1];
+		backBufferGraphics.setColor(fill);
+		if (fillWidth > 0)
+			backBufferGraphics.fillRect(barX, barY, fillWidth,
+					BOSS_BAR_HEIGHT);
+
+		backBufferGraphics.setColor(Color.RED);
+		backBufferGraphics.drawRect(barX, barY, barWidth, BOSS_BAR_HEIGHT);
+		// Dividers between phases.
+		backBufferGraphics.setColor(Color.BLACK);
+		for (int i = 1; i < phases; i++) {
+			int x = barX + barWidth * i / phases;
+			backBufferGraphics.fillRect(x - 1, barY + 1, 2,
+					BOSS_BAR_HEIGHT - 1);
+		}
+
+		float shield = hud.getShieldRatio();
+		if (shield >= 0f) {
+			int shieldY = barY - 3;
+			backBufferGraphics.setColor(new Color(20, 60, 80));
+			backBufferGraphics.fillRect(barX, shieldY, barWidth, 2);
+			backBufferGraphics.setColor(Color.CYAN);
+			backBufferGraphics.fillRect(barX, shieldY,
+					Math.round(barWidth * shield), 2);
+		}
+	}
+
+	/**
 	 * Draws a sparkle, see-through according to its age.
 	 * AUTHORED BY: VFX TEAM (Effection)
 	 *

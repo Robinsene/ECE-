@@ -261,6 +261,8 @@ public class GameScreen extends Screen {
 	private engine.StageHud stageHud;
 	/** Shop affordability hint (Team ECE - KAN-40). */
 	private engine.ShopHint shopHint;
+	/** Boss bar phases, damage trail and shield (Team ECE - KAN-20). */
+	private engine.BossHud bossHud;
 	/** Bonus meteor and its diamonds. AUTHORED BY: VFX TEAM (Effection) */
 	private MeteorManager meteors;
 	/** Points shown when enemies are destroyed. AUTHORED BY: VFX TEAM (Effection) */
@@ -394,6 +396,7 @@ public class GameScreen extends Screen {
 		this.screenShake = new ScreenShake();
 		this.stageHud = new engine.StageHud();
 		this.shopHint = new engine.ShopHint();
+		this.bossHud = new engine.BossHud();
 		this.stageHud.startWave(countAliveEnemies());
 		this.meteors = new MeteorManager(this.level, this.width, this.height,SEPARATION_LINE_HEIGHT);
 		this.pointsEffect = new PointsEffect(SEPARATION_LINE_HEIGHT);
@@ -1043,8 +1046,10 @@ if (this.midBoss != null) {
 		drawManager.drawItemHud(this, this.items); // Item System (Team CS)
 		// Boss health bar: fixed overlay a row below the item HUD slots
 		// (y 43-59, Team CS), so the two never collide.
-		drawManager.drawBossHealthBar(this, this.midBoss,
-				engine.HudLayout.BOSS_BAR_Y);
+		// Boss bar split into phases, with damage trail (KAN-20).
+		this.bossHud.update(this.midBoss, now);
+		drawManager.drawBossHud(this, this.midBoss,
+				engine.HudLayout.BOSS_BAR_Y, this.bossHud, now);
 		// Kill combo, right under the item HUD, or under the boss bar on
 		// boss stages (Team ECE - KAN-23).
 		if (!this.paused)

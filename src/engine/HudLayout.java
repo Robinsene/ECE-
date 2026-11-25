@@ -96,6 +96,9 @@ public final class HudLayout {
 	/** Colours of the combo text for multipliers x1 to x4 (KAN-23). */
 	public static final Color[] COMBO_COLORS = { Color.WHITE, Color.GREEN,
 			Color.YELLOW, new Color(255, 120, 30) };
+	/** Boss bar fill colour for phases 1, 2 and 3 (KAN-20). */
+	public static final Color[] BOSS_PHASE_COLORS = { Color.RED,
+			new Color(255, 140, 0), new Color(220, 40, 220) };
 	/** Background of the top HUD bar (KAN-26). */
 	public static final Color HUD_PANEL_COLOR = new Color(8, 24, 12);
 	/** Separators between the top HUD sections (KAN-26). */
