@@ -380,7 +380,8 @@ public final class DrawManager {
 				double scaleX = (double) entity.getWidth() / image.length;
 				double scaleY = (double) entity.getHeight() / image[0].length;
 
-				backBufferGraphics.setColor(entity.getColor());
+				backBufferGraphics.setColor(this.playerLaserColor != null
+						? this.playerLaserColor : entity.getColor());
 				for (int i = 0; i < image.length; i++) {
 					for (int j = 0; j < image[i].length; j++) {
 						if (image[i][j]) {
@@ -395,8 +396,12 @@ public final class DrawManager {
 			}
 		} else {
 			// For all other entities (ships, enemies, and ENEMY bullets), use the standard 2x pixel drawing
-			drawSprite(entity.getSpriteType(), positionX, positionY,
-					entity.getColor());
+			Color color = entity.getColor();
+			// Space Opera: enemy shots are red lasers (Team ECE - KAN-55).
+			if (this.enemyLaserColor != null
+					&& entity instanceof entity.Bullet)
+				color = this.enemyLaserColor;
+			drawSprite(entity.getSpriteType(), positionX, positionY, color);
 		}
 
 		g2d.setComposite(previous); // back to what it was
@@ -827,7 +832,8 @@ public final class DrawManager {
 		backBufferGraphics.setFont(fontRegular);
 		backBufferGraphics.setColor(hud.isPhasePulseOn(now) ? Color.YELLOW
 				: Color.WHITE);
-		drawCenteredRegularString(screen, "BOSS  PHASE " + phase + "/"
+		drawCenteredRegularString(screen, (this.bossName != null
+				? this.bossName : "BOSS") + "  PHASE " + phase + "/"
 				+ phases, positionY);
 
 		// Damage trail, then the HP fill on top of it.
@@ -2028,6 +2034,100 @@ public final class DrawManager {
 	}
 
 	/**
+	 * Colours both sides' shots, or null to keep the bullets' own colours
+	 * (Team ECE - KAN-55, Space Opera lasers).
+	 *
+	 * @param player
+	 *            Colour of the player's shots, or null.
+	 * @param enemy
+	 *            Colour of the enemies' shots, or null.
+	 */
+	public void setLaserColors(final Color player, final Color enemy) {
+		this.playerLaserColor = player;
+		this.enemyLaserColor = enemy;
+	}
+
+	/**
+	 * Name shown above the boss bar instead of "BOSS" (Team ECE - KAN-55).
+	 *
+	 * @param name
+	 *            Boss name, or null for "BOSS".
+	 */
+	public void setBossName(final String name) {
+		this.bossName = name;
+	}
+
+	/**
+	 * Draws the deep-space background of the Space Opera mode, with the
+	 * stars stretched into streaks during the hyperspace jump (Team ECE -
+	 * KAN-55).
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param starfield
+	 *            Stars to draw.
+	 * @param streak
+	 *            Streak length factor, 0 for plain stars.
+	 */
+	public void drawSpaceBackground(final Screen screen,
+			final screen.Starfield starfield, final float streak) {
+		int centerX = screen.getWidth() / 2;
+		int centerY = screen.getHeight() / 2;
+		for (int i = 0; i < starfield.getCount(); i++) {
+			int x = starfield.getX(i);
+			int y = starfield.getY(i);
+			int size = starfield.getSize(i);
+			Color base = starfield.getColor(i);
+			// Slightly blue, like distant suns.
+			Color tint = new Color(base.getRed() * 3 / 4, base.getGreen() * 4 / 5,
+					Math.min(255, base.getBlue() + 30));
+			backBufferGraphics.setColor(tint);
+			if (streak <= 0f) {
+				backBufferGraphics.fillRect(x, y, size, size);
+			} else {
+				// Lines pointing away from the centre, longer for near stars.
+				float k = streak * (0.35f + 0.25f * size);
+				backBufferGraphics.drawLine(x, y,
+						x + Math.round((x - centerX) * k),
+						y + Math.round((y - centerY) * k));
+			}
+		}
+		if (streak > 0.85f) {
+			// White flash at the peak of the jump.
+			Graphics2D g2d = (Graphics2D) backBufferGraphics;
+			java.awt.Composite previous = g2d.getComposite();
+			g2d.setComposite(AlphaComposite.getInstance(
+					AlphaComposite.SRC_OVER, (streak - 0.85f) * 2f));
+			g2d.setColor(new Color(200, 220, 255));
+			g2d.fillRect(0, 0, screen.getWidth(), screen.getHeight());
+			g2d.setComposite(previous);
+		}
+	}
+
+	/**
+	 * Draws the Space Opera sector card during the countdown: the sector
+	 * below the countdown, and on the first stage the two sides above it
+	 * (Team ECE - KAN-55).
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param sector
+	 *            "SECTOR n - NAME".
+	 * @param factions
+	 *            "SIDE A  VS  SIDE B", or null.
+	 */
+	public void drawSectorCard(final Screen screen, final String sector,
+			final String factions) {
+		int lowerLine = screen.getHeight() / 2 + screen.getHeight() / 12;
+		int upperLine = screen.getHeight() / 2 - screen.getHeight() / 12;
+		drawCenteredSmallString(screen, sector, lowerLine + 20,
+				new Color(120, 200, 255));
+		if (factions != null)
+			drawCenteredSmallString(screen, factions, upperLine - 14,
+					new Color(255, 210, 90));
+	}
+
+	/**
 	 * Draws a centered string in the small HUD font (Team ECE - game
 	 * modes: mode descriptions, sector names).
 	 *
@@ -2425,6 +2525,13 @@ public final class DrawManager {
 		WarpIn.drawPreview((Graphics2D) backBufferGraphics,
 				spriteMap.get(shipSprite), color, centerX, top, 50);
 	}
+
+	/** Space Opera laser colours, null outside that mode (KAN-55). */
+	private Color playerLaserColor;
+	/** See {@link #playerLaserColor}. */
+	private Color enemyLaserColor;
+	/** Name above the boss bar, null for "BOSS" (KAN-55). */
+	private String bossName;
 
 	/** Point size of the small text used in the shop and Customize panels. */
 	private static final float SMALL_FONT_SIZE = 8f;

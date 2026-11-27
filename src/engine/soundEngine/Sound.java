@@ -70,6 +70,8 @@ public enum Sound {
 	BGM_MENU("sounds/bgm_menu.wav", Category.BGM),
 	/** Tense music of the boss stages (levels 5 and 10). */
 	BGM_BOSS("sounds/bgm_boss.wav", Category.BGM),
+	/** Heroic music of the Space Opera mode (Team ECE - KAN-55). */
+	BGM_SPACE_OPERA("sounds/bgm_space_opera.wav", Category.BGM),
 	/** Faster, louder boss music for the boss's last phase. */
 	BGM_BOSS_FINAL_PHASE("sounds/bgm_boss_final_phase.wav", Category.BGM);
 

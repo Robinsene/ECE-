@@ -282,6 +282,8 @@ public class GameScreen extends Screen {
 	private engine.ShopHint shopHint;
 	/** Boss bar phases, damage trail and shield (Team ECE - KAN-20). */
 	private engine.BossHud bossHud;
+	/** Deep-space stars of the Space Opera mode, null otherwise (KAN-55). */
+	private Starfield spaceStars;
 	/** True if Comet Trail is bought and switched on. AUTHORED BY: VFX TEAM (Effection) */
 	private boolean cometTrailOn;
 	/** Bonus meteor and its diamonds. AUTHORED BY: VFX TEAM (Effection) */
@@ -380,7 +382,16 @@ public class GameScreen extends Screen {
 	 */
 	public final void initialize() {
 		super.initialize();
-		SoundManager.getInstance().playBgm(Sound.BGM_GAME);
+		// Space Opera theme: music, lasers, boss names, deep space
+		// (Team ECE - KAN-55). Reset to the normal look otherwise.
+		boolean opera = engine.SpaceOpera.isActive();
+		SoundManager.getInstance().playBgm(
+				opera ? Sound.BGM_SPACE_OPERA : Sound.BGM_GAME);
+		drawManager.setLaserColors(opera ? engine.SpaceOpera.PLAYER_LASER : null,
+				opera ? engine.SpaceOpera.ENEMY_LASER : null);
+		drawManager.setBossName(opera ? engine.SpaceOpera.bossName(this.level)
+				: null);
+		this.spaceStars = opera ? new Starfield(this.width, this.height) : null;
 
 		// Initialize the player in both boss and normal stages.
 		this.ship = new Ship(this.width / 2, this.height - 30,
@@ -511,6 +522,9 @@ public class GameScreen extends Screen {
 			if (this.hudEvents != null)
 				this.hudEvents.detach(); // Team ECE - KAN-38
 			engine.BossMusic.apply(null); // no boss music outside the stage
+			// Other screens and modes draw with the normal colours (KAN-55).
+			drawManager.setLaserColors(null, null);
+			drawManager.setBossName(null);
 		}
 
 		this.items.endLevel(); // Item System (Team CS)
@@ -1043,6 +1057,18 @@ public class GameScreen extends Screen {
 	private void draw() {
 		drawManager.initDrawing(this);
 
+		// Space Opera: deep space behind everything, hyperspace jump at the
+		// start of the stage (Team ECE - KAN-55).
+		if (this.spaceStars != null) {
+			float streak = engine.SpaceOpera.streakLength(engine.SpaceOpera
+					.jumpProgress(System.currentTimeMillis()
+							- this.gameStartTime));
+			if (!this.paused)
+				for (int i = 0; i < 1 + Math.round(streak * 12); i++)
+					this.spaceStars.update();
+			drawManager.drawSpaceBackground(this, this.spaceStars, streak);
+		}
+
 		if (!this.paused) {
 			// Screen shake: move game world only. AUTHORED BY: VFX TEAM (Effection)
 			this.screenShake.update();
@@ -1246,6 +1272,15 @@ public class GameScreen extends Screen {
 					/ 12);
 			drawManager.drawItemHint(this, this.items); // Item System (Team CS)
 			drawManager.drawKeyHints(this, "P to pause");
+			// Space Opera: sector name, and the two sides on the first
+			// stage (Team ECE - KAN-55).
+			if (this.spaceStars != null)
+				drawManager.drawSectorCard(this,
+						engine.SpaceOpera.sectorTitle(this.level),
+						this.level == engine.GameMode.SPACE_OPERA.firstLevel()
+								? engine.SpaceOpera.PLAYER_FACTION + "  VS  "
+										+ engine.SpaceOpera.ENEMY_FACTION
+								: null);
 			// Boss stages: warning above the countdown (Team ECE - KAN-31).
 			if (engine.StageHud.isBossLevel(this.level))
 				drawManager.drawBossWarning(this, engine.StageHud
