@@ -45,6 +45,8 @@ public class ScoreScreen extends Screen {
 	private int nameCharSelected;
 	/** Time between changes in user selection. */
 	private Cooldown selectionCooldown;
+	/** End-of-run stats (Team ECE - KAN-58). */
+	private final engine.RunSummary summary;
 
 	/**
 	 * Constructor, establishes the properties of the screen.
@@ -68,6 +70,14 @@ public class ScoreScreen extends Screen {
 		this.shipsDestroyed = gameState.getShipsDestroyed();
 		Core.getAchievementManager().recordAccuracy(this.bulletsShot,
 				this.shipsDestroyed, gameState.getLevelsCompletedRun());
+		// Run stats, compared with the player's records (KAN-58).
+		this.summary = new engine.RunSummary(engine.GameMode.current(),
+				gameState.getLevelsCompletedRun(),
+				engine.RunStats.getPlayMillis(), this.shipsDestroyed,
+				engine.RunStats.getBestCombo(),
+				engine.RunStats.getBossesBeaten(),
+				gameState.getCoinsCollected());
+		new engine.RunRecords().submit(this.summary);
 		this.isNewRecord = false;
 		this.name = "AAA".toCharArray();
 		this.nameCharSelected = 0;
@@ -178,6 +188,8 @@ public class ScoreScreen extends Screen {
 				? (float) this.shipsDestroyed / this.bulletsShot : 0f;
 		drawManager.drawResults(this, this.score, this.livesRemaining,
 				this.shipsDestroyed, accuracy, this.isNewRecord);
+
+		drawManager.drawRunSummary(this, this.summary, this.isNewRecord); // KAN-58
 
 		if (this.isNewRecord)
 			drawManager.drawNameInput(this, this.name, this.nameCharSelected);

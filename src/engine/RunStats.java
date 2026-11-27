@@ -18,6 +18,10 @@ public final class RunStats {
 	private static long playMillis;
 	/** Time of the last tick, or -1. */
 	private static long lastTick = -1;
+	/** Best kill combo of the run (KAN-58). */
+	private static int bestCombo;
+	/** Bosses destroyed during the run (KAN-58). */
+	private static int bossesBeaten;
 
 	private RunStats() {
 	}
@@ -26,6 +30,33 @@ public final class RunStats {
 	public static synchronized void startRun() {
 		playMillis = 0;
 		lastTick = -1;
+		bestCombo = 0;
+		bossesBeaten = 0;
+	}
+
+	/**
+	 * Keeps the best combo of the run (KAN-58).
+	 *
+	 * @param combo
+	 *            Best combo of the current stage.
+	 */
+	public static synchronized void recordCombo(final int combo) {
+		bestCombo = Math.max(bestCombo, combo);
+	}
+
+	/** Counts a destroyed boss (KAN-58). */
+	public static synchronized void recordBossBeaten() {
+		bossesBeaten++;
+	}
+
+	/** @return Best kill combo of the run. */
+	public static synchronized int getBestCombo() {
+		return bestCombo;
+	}
+
+	/** @return Bosses destroyed during the run. */
+	public static synchronized int getBossesBeaten() {
+		return bossesBeaten;
 	}
 
 	/**

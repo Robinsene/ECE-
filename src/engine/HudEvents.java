@@ -60,8 +60,9 @@ public final class HudEvents implements GameEvents.Listener {
 			this.lastKillAt = now;
 			break;
 		case LEVEL_START:
-			// Stage 1 is the start of a new run (KAN-37).
-			if (value == 1)
+			// The first stage of the mode starts a new run (KAN-37); Boss
+			// Rush starts on stage 5 (KAN-58).
+			if (value == GameMode.current().firstLevel())
 				RunStats.startRun();
 			break;
 		default:

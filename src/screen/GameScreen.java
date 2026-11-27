@@ -997,6 +997,7 @@ public class GameScreen extends Screen {
 	private void updateScoreHud() {
 		long now = System.currentTimeMillis();
 		this.comboTracker.update(now);
+		engine.RunStats.recordCombo(this.comboTracker.getBestCombo()); // KAN-58
 		this.bestScoreTracker.update(now, this.score);
 		if (this.lives > 0 && !this.levelFinished) {
 			int extraLives = this.extraLifeTracker.update(now, this.score,
@@ -1399,6 +1400,7 @@ public class GameScreen extends Screen {
 						if (this.midBoss.isDestroyed()) {
 							this.shipsDestroyed++;
 							GameEvents.emit(GameEvents.Type.ENEMY_KILLED, 0); // KAN-38
+							engine.RunStats.recordBossBeaten(); // KAN-58
 							this.screenShake.trigger();
 							showUnlockedAchievement(Core.getAchievementManager()
 									.recordBossDefeated());

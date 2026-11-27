@@ -2044,6 +2044,38 @@ public final class DrawManager {
 	}
 
 	/**
+	 * Draws the end-of-run stats under the results, with "NEW RECORD"
+	 * next to the best combo or the run time when the run beats them
+	 * (Team ECE - KAN-58).
+	 *
+	 * @param screen
+	 *            Score screen.
+	 * @param summary
+	 *            Stats of the run.
+	 * @param isNewRecord
+	 *            True when the high score name input is shown.
+	 */
+	public void drawRunSummary(final Screen screen, final RunSummary summary,
+			final boolean isNewRecord) {
+		if (summary == null)
+			return;
+		// Just under the accuracy line of drawResults.
+		int y = screen.getHeight() / (isNewRecord ? 4 : 2)
+				+ fontRegularMetrics.getHeight() * 7 + 4;
+		drawCenteredSmallString(screen, summary.firstLine(), y,
+				summary.isTimeRecord() ? Color.YELLOW : Color.LIGHT_GRAY);
+		drawCenteredSmallString(screen, summary.secondLine(), y + 14,
+				summary.isComboRecord() ? Color.YELLOW : Color.LIGHT_GRAY);
+		String records = summary.isTimeRecord() && summary.isComboRecord()
+				? "NEW RECORDS: LONGEST RUN AND BEST COMBO"
+				: summary.isTimeRecord() ? "NEW RECORD: LONGEST RUN"
+						: summary.isComboRecord() ? "NEW RECORD: BEST COMBO"
+								: null;
+		if (records != null)
+			drawCenteredSmallString(screen, records, y + 28, Color.YELLOW);
+	}
+
+	/**
 	 * Colours both sides' shots, or null to keep the bullets' own colours
 	 * (Team ECE - KAN-55, Space Opera lasers).
 	 *
