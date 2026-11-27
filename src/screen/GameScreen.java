@@ -642,7 +642,10 @@ public class GameScreen extends Screen {
 			} else {
 				if (!this.items.enemiesFrozen())
 					this.enemyShipFormation.update();
-				this.enemyShipFormation.shoot(this.bullets);
+				// Fan and aimed shots on later stages (Team ECE - KAN-60).
+				this.enemyShipFormation.shoot(this.bullets, this.level,
+						this.ship.getPositionX() + this.ship.getWidth() / 2,
+						this.ship.getPositionY());
 				this.meteors.trySpawn(this.enemyShipFormation, this.ship); // VFX meteor needs a normal formation.
 			}
 			updateLowHealthEffect();

@@ -469,14 +469,55 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 	 *            Bullets set to add the bullet being shot.
 	 */
 	public final void shoot(final Set<Bullet> bullets) {
+		shoot(bullets, 1, 0, 0);
+	}
+
+	/**
+	 * Lets one of the bottom ships shoot, with one of the patterns of the
+	 * stage (Team ECE - KAN-60): straight, a three-bullet fan, or a shot
+	 * aimed at the player.
+	 *
+	 * @param bullets
+	 *            Bullets set to add the new bullets to.
+	 * @param level
+	 *            Stage number, for the patterns allowed.
+	 * @param targetX
+	 *            Centre X of the player's ship.
+	 * @param targetY
+	 *            Top of the player's ship.
+	 */
+	public final void shoot(final Set<Bullet> bullets, final int level,
+			final int targetX, final int targetY) {
 		// For now, only ships in the bottom row are able to shoot.
 		int index = (int) (Math.random() * this.shooters.size());
 		EnemyShip shooter = this.shooters.get(index);
 
-		if (this.shootingCooldown.checkFinished()) {
-			this.shootingCooldown.reset();
-			bullets.add(BulletPool.getBullet(shooter.getPositionX()
-					+ shooter.width / 2, shooter.getPositionY(), BULLET_SPEED));
+		if (!this.shootingCooldown.checkFinished())
+			return;
+		this.shootingCooldown.reset();
+		int x = shooter.getPositionX() + shooter.width / 2;
+		int y = shooter.getPositionY();
+		java.util.List<engine.AttackPattern> patterns = engine.AttackPattern
+				.patternsFor(level);
+		engine.AttackPattern pattern = patterns.get(
+				(int) (Math.random() * patterns.size()));
+		switch (pattern) {
+		case FAN:
+			for (int side = -1; side <= 1; side++) {
+				Bullet bullet = BulletPool.getBullet(x, y, BULLET_SPEED);
+				bullet.setSpeedX(side * engine.AttackPattern.FAN_SPEED_X);
+				bullets.add(bullet);
+			}
+			break;
+		case AIMED:
+			Bullet aimed = BulletPool.getBullet(x, y, BULLET_SPEED);
+			aimed.setSpeedX(engine.AttackPattern.aimSpeedX(x, y, targetX,
+					targetY, BULLET_SPEED));
+			bullets.add(aimed);
+			break;
+		default:
+			bullets.add(BulletPool.getBullet(x, y, BULLET_SPEED));
+			break;
 		}
 	}
 

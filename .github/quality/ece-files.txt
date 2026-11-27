@@ -18,3 +18,4 @@ src/screen/ModeSelectScreen.java
 src/screen/MissionBriefingScreen.java
 src/engine/RunSummary.java
 src/engine/RunRecords.java
+src/engine/AttackPattern.java
