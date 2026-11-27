@@ -1556,7 +1556,9 @@ public final class DrawManager {
 	 * @return Baseline of the item's text.
 	 */
 	private int menuItemBaseline(final Screen screen, final int index) {
-		return screen.getHeight() / 2 + menuItemSpacing() * (index + 2);
+		// One row higher than before so the 8 items (with "Modes") stay
+		// clear of the key hints (Team ECE - game modes).
+		return screen.getHeight() / 2 + menuItemSpacing() * (index + 1);
 	}
 
 	/**
@@ -2023,6 +2025,29 @@ public final class DrawManager {
 		backBufferGraphics.setFont(fontRegular);
 		backBufferGraphics.drawString(string, screen.getWidth() / 2
 				- fontRegularMetrics.stringWidth(string) / 2, height);
+	}
+
+	/**
+	 * Draws a centered string in the small HUD font (Team ECE - game
+	 * modes: mode descriptions, sector names).
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param string
+	 *            String to draw.
+	 * @param height
+	 *            Baseline of the text.
+	 * @param color
+	 *            Colour of the text.
+	 */
+	public void drawCenteredSmallString(final Screen screen,
+			final String string, final int height, final Color color) {
+		Font font = smallFont();
+		backBufferGraphics.setFont(font);
+		backBufferGraphics.setColor(color);
+		backBufferGraphics.drawString(string, screen.getWidth() / 2
+				- backBufferGraphics.getFontMetrics(font).stringWidth(string)
+						/ 2, height);
 	}
 
 	/**

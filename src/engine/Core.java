@@ -13,6 +13,7 @@ import screen.AchievementsScreen;
 import screen.CashOutScreen;
 import screen.GameScreen;
 import screen.HighScoreScreen;
+import screen.ModeSelectScreen;
 import screen.ScoreScreen;
 import screen.Screen;
 import screen.SettingsScreen;
@@ -141,7 +142,10 @@ public final class Core {
 
 		int returnCode = startLevel == 1 ? 1 : 2;
 		do {
-			gameState = new GameState(startLevel, 0, MAX_LIVES, 0, 0, 0);
+			// Boss Rush starts on a boss stage (Team ECE - game modes).
+			int firstLevel = GameMode.current() == GameMode.CLASSIC
+					? startLevel : GameMode.current().firstLevel();
+			gameState = new GameState(firstLevel, 0, MAX_LIVES, 0, 0, 0);
 
 			switch (returnCode) {
 			case 1:
@@ -151,10 +155,14 @@ public final class Core {
 						+ " title screen at " + FPS + " fps.");
 				returnCode = frame.setScreen(currentScreen);
 				LOGGER.info("Closing title screen.");
+				// "Play" from the title screen is always the normal run.
+				if (returnCode == 2)
+					GameMode.select(GameMode.CLASSIC);
 				break;
 			case 2:
 				// Practice first; ESC returns to the menu without starting a run.
-				if (startLevel == 1) {
+				// Special modes go straight to their first stage.
+				if (startLevel == 1 && GameMode.current().showsTutorial()) {
 					currentScreen = new TutorialScreen(width, height, FPS);
 					returnCode = frame.setScreen(currentScreen);
 					if (returnCode != 2) {
@@ -162,6 +170,7 @@ public final class Core {
 					}
 				}
 				// Game & score.
+				boolean cashedOut = false;
 				do {
 					// One extra live every few levels.
 					boolean bonusLife = gameState.getLevel()
@@ -169,7 +178,8 @@ public final class Core {
 							&& gameState.getLivesRemaining() < MAX_LIVES;
 					
 					currentScreen = new GameScreen(gameState,
-							gameSettings.get(gameState.getLevel() - 1),
+							GameMode.settingsFor(gameState.getLevel(),
+									gameSettings),
 							bonusLife, width, height, FPS);
 					LOGGER.info("Starting " + WIDTH + "x" + HEIGHT
 							+ " game screen at " + FPS + " fps.");
@@ -178,7 +188,8 @@ public final class Core {
 
 					gameState = ((GameScreen) currentScreen).getGameState();
 
-					gameState = new GameState(gameState.getLevel() + 1,
+					gameState = new GameState(
+							GameMode.current().nextLevel(gameState.getLevel()),
 							gameState.getScore(),
 							gameState.getLivesRemaining(),
 							gameState.getBulletsShot(),
@@ -187,10 +198,13 @@ public final class Core {
 							gameState.getLevelsCompletedRun(),
                             gameState.getCoinsCollected());
 
-					gameState = offerCashOut(gameState, width, height);
+					GameState offered = offerCashOut(gameState, width, height);
+					// Cashing out ends the run, even in Survival.
+					cashedOut = offered != gameState;
+					gameState = offered;
 
-				} while (gameState.getLivesRemaining() > 0
-						&& gameState.getLevel() <= NUM_LEVELS);
+				} while (!cashedOut && gameState.getLivesRemaining() > 0
+						&& GameMode.current().hasLevel(gameState.getLevel()));
 
 				gameState = settlePendingDiamonds(gameState);
 
@@ -237,6 +251,16 @@ public final class Core {
 				returnCode = frame.setScreen(currentScreen);
 				LOGGER.info("Closing achievements screen.");
 				break;
+			case 8:
+				// Special game modes (Team ECE): the screen sets the mode
+				// and returns 2 to start the run, or 1 to go back.
+				currentScreen = new ModeSelectScreen(width, height, FPS);
+				LOGGER.info("Starting " + WIDTH + "x" + HEIGHT
+						+ " mode select screen at " + FPS + " fps.");
+				returnCode = frame.setScreen(currentScreen);
+				LOGGER.info("Closing mode select screen, mode "
+						+ GameMode.current() + ".");
+				break;
 			case 7:
 				// Ship select.
 				currentScreen = new ShipSelectScreen(width, height, FPS);
@@ -279,7 +303,7 @@ public final class Core {
 	private static GameState offerCashOut(final GameState gameState,
 			final int width, final int height) {
 		boolean canContinue = gameState.getLivesRemaining() > 0
-				&& gameState.getLevel() <= NUM_LEVELS;
+				&& GameMode.current().hasLevel(gameState.getLevel());
 		if (!canContinue || gameState.getPendingDiamonds() <= 0)
 			return gameState;
 

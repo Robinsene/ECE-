@@ -135,8 +135,10 @@ public class StageHud {
 	 * @return True if that level ends with a boss.
 	 */
 	public static boolean isBossLevel(final int level) {
+		// Survival keeps going past stage 10: stage 15 is played like 5.
+		int base = level > 0 ? GameMode.baseLevel(level) : level;
 		for (int bossLevel : BOSS_LEVELS)
-			if (bossLevel == level)
+			if (bossLevel == base)
 				return true;
 		return false;
 	}

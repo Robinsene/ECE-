@@ -387,8 +387,8 @@ public class GameScreen extends Screen {
 				Core.getSelectedShipType());
 
 		// Distinct mid-boss and final boss encounters.
-		if (this.level == 5 || this.level == 10) {
-			this.midBoss = this.level == 5
+		if (engine.StageHud.isBossLevel(this.level)) {
+			this.midBoss = engine.GameMode.baseLevel(this.level) == 5
 					? new MidBoss(this.width / 2 - 16, 60, DrawManager.SpriteType.MidBoss1)
 					: new FinalBoss(this.width / 2 - 24, 60, DrawManager.SpriteType.FinalBoss1);
 		} else {
@@ -693,7 +693,9 @@ public class GameScreen extends Screen {
 								true));
 
 				// Last level cleared alive: the game is beaten.
-				if (this.level == Core.getNumLevels())
+				// Boss Rush and Survival skip stages: not a full run.
+				if (this.level == Core.getNumLevels()
+						&& engine.GameMode.current().isFullRun())
 					showUnlockedAchievement(Core.getAchievementManager()
 							.recordGameWon(Core.getSelectedShipId()));
 			}
@@ -1349,7 +1351,7 @@ public class GameScreen extends Screen {
 					}
 				}
 			} else {
-				if (this.level == 5 || this.level == 10) {
+				if (engine.StageHud.isBossLevel(this.level)) {
 					if (this.midBoss != null
 							&& !this.midBoss.isDestroyed()
 							&& checkCollision(bullet, (Entity) this.midBoss)) {
