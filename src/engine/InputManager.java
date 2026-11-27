@@ -57,6 +57,9 @@ public final class InputManager implements KeyListener, MouseMotionListener, Mou
 	 *            Key number to check.
 	 * @return Key state.
 	 */
+	/** Last key pressed, or -1 (Team ECE - KAN-63). */
+	private volatile int lastPressed = -1;
+
 	public boolean isKeyDown(final int keyCode) {
 		return keys[keyCode];
 	}
@@ -71,6 +74,19 @@ public final class InputManager implements KeyListener, MouseMotionListener, Mou
 	public void keyPressed(final KeyEvent key) {
 		if (key.getKeyCode() >= 0 && key.getKeyCode() < NUM_KEYS)
 			keys[key.getKeyCode()] = true;
+		this.lastPressed = key.getKeyCode();
+	}
+
+	/**
+	 * Returns the last key pressed and forgets it, for the key remapping
+	 * in the settings (Team ECE - KAN-63).
+	 *
+	 * @return Key code, or -1 if no key was pressed since the last call.
+	 */
+	public synchronized int takeLastPressed() {
+		int key = this.lastPressed;
+		this.lastPressed = -1;
+		return key;
 	}
 
 	/**

@@ -551,7 +551,9 @@ public class GameScreen extends Screen {
 		this.ship.setSkinColor(this.skin.colorAt(System.currentTimeMillis()));
 		updateBossMusic();
 
-		if (inputManager.isKeyDown(KeyEvent.VK_P)
+		// Remappable keys (Team ECE - KAN-63).
+		engine.KeyBindings keys = engine.KeyBindings.getInstance();
+		if (keys.isDown(inputManager, engine.KeyBindings.Action.PAUSE)
 				&& this.pauseKeyCooldown.checkFinished()) {
 			if (this.paused)
 				resumeGameplay();
@@ -580,10 +582,10 @@ public class GameScreen extends Screen {
 			engine.RunStats.tick(System.currentTimeMillis()); // KAN-37
 
 			if (!this.ship.isDestroyed()) {
-				boolean moveRight = inputManager.isKeyDown(KeyEvent.VK_RIGHT)
-						|| inputManager.isKeyDown(KeyEvent.VK_D);
-				boolean moveLeft = inputManager.isKeyDown(KeyEvent.VK_LEFT)
-						|| inputManager.isKeyDown(KeyEvent.VK_A);
+				boolean moveRight = keys.isDown(inputManager,
+						engine.KeyBindings.Action.MOVE_RIGHT);
+				boolean moveLeft = keys.isDown(inputManager,
+						engine.KeyBindings.Action.MOVE_LEFT);
 
 				boolean isRightBorder = this.ship.getPositionX()
 						+ this.ship.getWidth() + this.ship.getSpeed() > this.width - 1;
@@ -596,7 +598,7 @@ public class GameScreen extends Screen {
 				if (moveLeft && !isLeftBorder) {
 					this.ship.moveLeft();
 				}
-				if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
+				if (keys.isDown(inputManager, engine.KeyBindings.Action.SHOOT)) {
 					// Count bullets, not trigger pulls: Two Way fires two at
 					// once, and accuracy is kills per bullet.
 					int bulletsBefore = this.bullets.size();
@@ -1280,7 +1282,8 @@ public class GameScreen extends Screen {
 			drawManager.drawHorizontalLine(this, this.height / 2 + this.height
 					/ 12);
 			drawManager.drawItemHint(this, this.items); // Item System (Team CS)
-			drawManager.drawKeyHints(this, "P to pause");
+			drawManager.drawKeyHints(this, engine.KeyBindings.getInstance()
+					.keyName(engine.KeyBindings.Action.PAUSE) + " to pause");
 			// Space Opera: sector name, and the two sides on the first
 			// stage (Team ECE - KAN-55).
 			if (this.spaceStars != null)

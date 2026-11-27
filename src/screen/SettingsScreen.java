@@ -26,7 +26,13 @@ public class SettingsScreen extends Screen {
 	private static final int SLIDER_ROW_SPACING = 60;
 	/** Rows that can be selected: BGM and SFX sliders, then HUD opacity,
 	 * HUD size and HUD animations (Team ECE - KAN-28, KAN-41). */
-	private static final int SELECTABLE_ROWS = 5;
+	private static final int SELECTABLE_ROWS = 9;
+	/** First row of the key bindings (Team ECE - KAN-63). */
+	private static final int FIRST_BINDING_ROW = 5;
+	/** Action waiting for its new key, or null (Team ECE - KAN-63). */
+	private engine.KeyBindings.Action capturing;
+	/** Whether space / enter was down on the previous frame. */
+	private boolean confirmWasDown = true;
 	/** Gameplay HUD options (Team ECE - KAN-28). */
 	private final HudSettings hudSettings = HudSettings.getInstance();
 	/** Slider currently being dragged, or -1 when none is active. */
@@ -85,8 +91,9 @@ public class SettingsScreen extends Screen {
 			this.hudSettings.stepSize(direction);
 		else if (this.currentMenuItem == 4)
 			this.hudSettings.setAnimated(direction > 0);
-		else
+		else if (this.currentMenuItem < 2)
 			adjustSelectedVolume(10 * direction);
+		// Key binding rows: left / right do nothing (KAN-63).
 	}
 
 	/**
@@ -107,8 +114,19 @@ public class SettingsScreen extends Screen {
 		super.update();
 
 		boolean mousePressed = this.inputManager.isLeftMousePressed();
+		boolean confirmDown = this.inputManager.isKeyDown(KeyEvent.VK_SPACE)
+				|| this.inputManager.isKeyDown(KeyEvent.VK_ENTER);
 
-		if (this.inputDelay.checkFinished()) {
+		if (this.capturing != null) {
+			// Waiting for the new key of an action (Team ECE - KAN-63).
+			updateCapture(confirmDown);
+		} else if (this.inputDelay.checkFinished() && confirmDown
+				&& !this.confirmWasDown
+				&& this.currentMenuItem >= FIRST_BINDING_ROW) {
+			this.capturing = engine.KeyBindings.Action.values()[
+					this.currentMenuItem - FIRST_BINDING_ROW];
+			engine.soundEngine.MenuSounds.playSelect();
+		} else if (this.inputDelay.checkFinished()) {
 			if (this.inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
 				engine.soundEngine.MenuSounds.playCancel();
 				this.draggingSlider = -1;
@@ -142,7 +160,33 @@ public class SettingsScreen extends Screen {
 		}
 
 		this.mouseWasPressed = mousePressed;
+		this.confirmWasDown = confirmDown;
 		draw();
+	}
+
+	/**
+	 * Takes the next key pressed as the new key of the action being
+	 * remapped; esc cancels (Team ECE - KAN-63). The space / enter press
+	 * that started the remap is ignored until it is released.
+	 *
+	 * @param confirmDown
+	 *            Space or enter down this frame.
+	 */
+	private void updateCapture(final boolean confirmDown) {
+		if (this.confirmWasDown && confirmDown) {
+			this.inputManager.takeLastPressed();
+			return;
+		}
+		int key = this.inputManager.takeLastPressed();
+		if (key < 0)
+			return;
+		if (key != KeyEvent.VK_ESCAPE)
+			engine.KeyBindings.getInstance().bind(this.capturing, key);
+		else
+			engine.soundEngine.MenuSounds.playCancel();
+		this.capturing = null;
+		// The key that was just bound must not also move the cursor.
+		this.selectionCooldown.reset();
 	}
 
 	/**
@@ -326,22 +370,23 @@ public class SettingsScreen extends Screen {
 		this.drawManager.drawMenuRow(
 				this, "Key Bindings", bindingY(0), false);
 
-		this.drawManager.drawMenuRow(
-				this, "- Move Left: A / Left Arrow -",
-				bindingY(1), false);
+		// Remappable keys (Team ECE - KAN-63).
+		engine.KeyBindings keys = engine.KeyBindings.getInstance();
+		engine.KeyBindings.Action[] actions = engine.KeyBindings.Action
+				.values();
+		for (int i = 0; i < actions.length; i++) {
+			String key = actions[i] == this.capturing ? "press a key"
+					: keys.keyName(actions[i]);
+			this.drawManager.drawMenuRow(this, actions[i].getLabel() + ": "
+					+ key, bindingY(i + 1),
+					this.currentMenuItem == FIRST_BINDING_ROW + i);
+		}
 
-		this.drawManager.drawMenuRow(
-				this, "- Move Right: D / Right Arrow -",
-				bindingY(2), false);
-
-		this.drawManager.drawMenuRow(
-				this, "- Shoot: Space -", bindingY(3), false);
-
-		this.drawManager.drawMenuRow(
-				this, "- Back: ESC -", bindingY(4), false);
-
-		this.drawManager.drawKeyHints(
-				this, "drag volume, arrows adjust, esc back");
+		this.drawManager.drawKeyHints(this, this.capturing != null
+				? "press the new key, esc cancel"
+				: this.currentMenuItem >= FIRST_BINDING_ROW
+						? "space change key, esc back"
+						: "drag volume, arrows adjust, esc back");
 
 		this.drawManager.completeDrawing(this);
 	}
