@@ -70,32 +70,40 @@ public class ModeSelectScreen extends Screen {
 		boolean confirmDown = this.inputManager.isKeyDown(KeyEvent.VK_SPACE)
 				|| this.inputManager.isKeyDown(KeyEvent.VK_ENTER);
 		boolean mouseDown = this.inputManager.isMousePressed();
-
-		if (this.inputDelay.checkFinished()) {
-			if (this.inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
-				MenuSounds.playCancel();
-				this.returnCode = 1;
-				this.isRunning = false;
-			} else {
-				moveCursor();
-				if (this.inputManager.isMouseMoved()) {
-					int row = rowAt(this.inputManager.getMouseY());
-					if (row >= 0)
-						this.selected = row;
-				}
-				// Keys and clicks held from the title screen don't count.
-				if (confirmDown && !this.confirmWasDown)
-					start();
-				else if (mouseDown && !this.mouseWasDown
-						&& rowAt(this.inputManager.getMouseY()) >= 0) {
-					this.selected = rowAt(this.inputManager.getMouseY());
-					start();
-				}
-			}
-		}
+		if (this.inputDelay.checkFinished())
+			handleInput(confirmDown, mouseDown);
 		this.confirmWasDown = confirmDown;
 		this.mouseWasDown = mouseDown;
 		draw();
+	}
+
+	/**
+	 * Esc goes back; otherwise move the cursor and start on a new press
+	 * (keys and clicks held from the title screen don't count).
+	 *
+	 * @param confirmDown
+	 *            Space or enter down this frame.
+	 * @param mouseDown
+	 *            Mouse button down this frame.
+	 */
+	private void handleInput(final boolean confirmDown,
+			final boolean mouseDown) {
+		if (this.inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
+			MenuSounds.playCancel();
+			this.returnCode = 1;
+			this.isRunning = false;
+			return;
+		}
+		moveCursor();
+		int hovered = rowAt(this.inputManager.getMouseY());
+		if (this.inputManager.isMouseMoved() && hovered >= 0)
+			this.selected = hovered;
+		if (confirmDown && !this.confirmWasDown) {
+			start();
+		} else if (mouseDown && !this.mouseWasDown && hovered >= 0) {
+			this.selected = hovered;
+			start();
+		}
 	}
 
 	/** Moves the cursor with the arrow keys or W / S. */
