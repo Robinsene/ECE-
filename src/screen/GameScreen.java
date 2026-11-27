@@ -387,6 +387,10 @@ public class GameScreen extends Screen {
 		this.prevLives = this.lives;
 		this.lowHealthActive = false;
 		this.bullets = new HashSet<Bullet>();
+		// A restart calls initialize() again: drop the old listener first so
+		// listeners don't pile up on PLAYER_HIT (Team ECE - KAN-48).
+		if (this.damageDim != null)
+			GameEvents.unsubscribe(GameEvents.Type.PLAYER_HIT, this.damageDim);
 		this.damageDim = new DamageDimEffect(900, 0.75f,
         new java.awt.Color(150, 0, 0));  //new update dim effect
 		GameEvents.subscribe(GameEvents.Type.PLAYER_HIT, this.damageDim);
