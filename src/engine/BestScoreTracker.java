@@ -53,7 +53,9 @@ public class BestScoreTracker {
 			final Logger logger) {
 		int best = 0;
 		try {
-			List<Score> highScores = Core.getFileManager().loadHighScores();
+			// Best score of the mode being played (KAN-59).
+			List<Score> highScores = Core.getFileManager()
+					.loadHighScores(GameMode.current());
 			for (Score highScore : highScores)
 				best = Math.max(best, highScore.getScore());
 		} catch (IOException | RuntimeException e) {

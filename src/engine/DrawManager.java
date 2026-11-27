@@ -2017,9 +2017,18 @@ public final class DrawManager {
 		int i = 0;
 		String scoreString = "";
 
+		if (highScores == null || highScores.isEmpty()) {
+			drawCenteredRegularString(screen, "No scores yet",
+					screen.getHeight() / 4 + fontRegularMetrics.getHeight() * 2);
+			return;
+		}
 		for (Score score : highScores) {
-			scoreString = String.format("%s        %04d", score.getName(),
-					score.getScore());
+			// Survival also shows the stage reached (Team ECE - KAN-59).
+			scoreString = score.getStage() > 0
+					? String.format("%s    %04d    ST %d", score.getName(),
+							score.getScore(), score.getStage())
+					: String.format("%s        %04d", score.getName(),
+							score.getScore());
 			drawCenteredRegularString(screen, scoreString, screen.getHeight()
 					/ 4 + fontRegularMetrics.getHeight() * (i + 1) * 2);
 			i++;

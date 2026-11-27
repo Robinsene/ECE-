@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.util.List;
 
 import engine.Core;
+import engine.GameMode;
 import engine.Score;
+import engine.soundEngine.MenuSounds;
 
 /**
  * Implements the high scores screen, it shows player records.
@@ -17,6 +19,10 @@ public class HighScoreScreen extends Screen {
 
 	/** List of past high scores. */
 	private List<Score> highScores;
+	/** Mode whose scores are shown (Team ECE - KAN-59). */
+	private GameMode mode;
+	/** Whether left or right was down on the previous frame. */
+	private boolean arrowWasDown = true;
 
 	/**
 	 * Constructor, establishes the properties of the screen.
@@ -32,11 +38,23 @@ public class HighScoreScreen extends Screen {
 		super(width, height, fps);
 
 		this.returnCode = 1;
+		// Opens on the mode played last (Team ECE - KAN-59).
+		showMode(GameMode.current());
+	}
 
+	/**
+	 * Loads and shows the high scores of a mode (Team ECE - KAN-59).
+	 *
+	 * @param shown
+	 *            Mode to show.
+	 */
+	private void showMode(final GameMode shown) {
+		this.mode = shown;
 		try {
-			this.highScores = Core.getFileManager().loadHighScores();
+			this.highScores = Core.getFileManager().loadHighScores(shown);
 		} catch (NumberFormatException | IOException e) {
 			logger.warning("Couldn't load high scores!");
+			this.highScores = new java.util.ArrayList<Score>();
 		}
 	}
 
@@ -57,6 +75,19 @@ public class HighScoreScreen extends Screen {
 	protected final void update() {
 		super.update();
 
+		// Left / right switch between the modes (Team ECE - KAN-59).
+		boolean left = inputManager.isKeyDown(KeyEvent.VK_LEFT)
+				|| inputManager.isKeyDown(KeyEvent.VK_A);
+		boolean right = inputManager.isKeyDown(KeyEvent.VK_RIGHT)
+				|| inputManager.isKeyDown(KeyEvent.VK_D);
+		if ((left || right) && !this.arrowWasDown) {
+			GameMode[] modes = GameMode.values();
+			int step = right ? 1 : modes.length - 1;
+			showMode(modes[(this.mode.ordinal() + step) % modes.length]);
+			MenuSounds.playMove();
+		}
+		this.arrowWasDown = left || right;
+
 		draw();
 		if (inputManager.isKeyDown(KeyEvent.VK_ESCAPE)
 				&& this.inputDelay.checkFinished())
@@ -70,8 +101,11 @@ public class HighScoreScreen extends Screen {
 		drawManager.initDrawing(this);
 
 		drawManager.drawScreenTitle(this, MenuItem.HIGH_SCORES.getTitle());
+		drawManager.drawCenteredSmallString(this, "<  "
+				+ this.mode.getTitle().toUpperCase() + "  >",
+				getHeight() / 4 + 4, java.awt.Color.YELLOW);
 		drawManager.drawHighScores(this, this.highScores);
-		drawManager.drawKeyHints(this, "esc back");
+		drawManager.drawKeyHints(this, "left/right mode, esc back");
 
 		drawManager.completeDrawing(this);
 	}

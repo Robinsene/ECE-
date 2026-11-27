@@ -45,6 +45,8 @@ public class ScoreScreen extends Screen {
 	private int nameCharSelected;
 	/** Time between changes in user selection. */
 	private Cooldown selectionCooldown;
+	/** Stage the run ended on (Team ECE - KAN-59). */
+	private final int stageReached;
 	/** End-of-run stats (Team ECE - KAN-58). */
 	private final engine.RunSummary summary;
 
@@ -65,6 +67,7 @@ public class ScoreScreen extends Screen {
 		super(width, height, fps);
 
 		this.score = gameState.getScore();
+		this.stageReached = gameState.getLevel();
 		this.livesRemaining = gameState.getLivesRemaining();
 		this.bulletsShot = gameState.getBulletsShot();
 		this.shipsDestroyed = gameState.getShipsDestroyed();
@@ -85,7 +88,9 @@ public class ScoreScreen extends Screen {
 		this.selectionCooldown.reset();
 
 		try {
-			this.highScores = Core.getFileManager().loadHighScores();
+			// High scores of the mode played (Team ECE - KAN-59).
+			this.highScores = Core.getFileManager()
+					.loadHighScores(engine.GameMode.current());
 			if (highScores.size() < MAX_HIGH_SCORE_NUM
 					|| highScores.get(highScores.size() - 1).getScore()
 					< this.score)
@@ -163,13 +168,17 @@ public class ScoreScreen extends Screen {
 	 * Saves the score as a high score.
 	 */
 	private void saveScore() {
-		highScores.add(new Score(new String(this.name), score));
+		// Survival also keeps the stage reached (KAN-59).
+		highScores.add(new Score(new String(this.name), score,
+				engine.GameMode.current() == engine.GameMode.SURVIVAL
+						? this.stageReached : 0));
 		Collections.sort(highScores);
 		if (highScores.size() > MAX_HIGH_SCORE_NUM)
 			highScores.remove(highScores.size() - 1);
 
 		try {
-			Core.getFileManager().saveHighScores(highScores);
+			Core.getFileManager().saveHighScores(highScores,
+					engine.GameMode.current());
 		} catch (IOException e) {
 			logger.warning("Couldn't load high scores!");
 		}

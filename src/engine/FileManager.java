@@ -242,6 +242,33 @@ public final class FileManager {
 	 *             In case of loading problems.
 	 */
 	public List<Score> loadHighScores() throws IOException {
+		return loadHighScores(GameMode.CLASSIC);
+	}
+
+	/**
+	 * Name of the high score file of a mode: Classic keeps the original
+	 * "scores" file, the other modes have their own (Team ECE - KAN-59).
+	 *
+	 * @param mode
+	 *            Game mode.
+	 * @return File name.
+	 */
+	public static String scoresFileName(final GameMode mode) {
+		return mode == null || mode == GameMode.CLASSIC ? "scores"
+				: "scores-" + mode.name().toLowerCase();
+	}
+
+	/**
+	 * Loads the high scores of one mode (Team ECE - KAN-59). Classic falls
+	 * back to the default list; the other modes start empty.
+	 *
+	 * @param mode
+	 *            Game mode.
+	 * @return Sorted list of scores.
+	 * @throws IOException
+	 *             In case of loading problems.
+	 */
+	public List<Score> loadHighScores(final GameMode mode) throws IOException {
 
 		List<Score> highScores = new ArrayList<Score>();
 		InputStream inputStream = null;
@@ -254,7 +281,7 @@ public final class FileManager {
 
 			String scoresPath = new File(jarPath).getParent();
 			scoresPath += File.separator;
-			scoresPath += "scores";
+			scoresPath += scoresFileName(mode);
 
 			File scoresFile = new File(scoresPath);
 			inputStream = new FileInputStream(scoresFile);
@@ -268,16 +295,17 @@ public final class FileManager {
 			String score = bufferedReader.readLine();
 
 			while ((name != null) && (score != null)) {
-				highScore = new Score(name, Integer.parseInt(score));
+				highScore = Score.fromSaveLines(name, score);
 				highScores.add(highScore);
 				name = bufferedReader.readLine();
 				score = bufferedReader.readLine();
 			}
 
 		} catch (FileNotFoundException e) {
-			// loads default if there's no user scores.
+			// loads default if there's no user scores (Classic only).
 			logger.info("Loading default high scores.");
-			highScores = loadDefaultHighScores();
+			if (mode == null || mode == GameMode.CLASSIC)
+				highScores = loadDefaultHighScores();
 		} finally {
 			if (bufferedReader != null)
 				bufferedReader.close();
@@ -297,6 +325,21 @@ public final class FileManager {
 	 */
 	public void saveHighScores(final List<Score> highScores)
 			throws IOException {
+		saveHighScores(highScores, GameMode.CLASSIC);
+	}
+
+	/**
+	 * Saves the high scores of one mode (Team ECE - KAN-59).
+	 *
+	 * @param highScores
+	 *            High scores to save.
+	 * @param mode
+	 *            Game mode.
+	 * @throws IOException
+	 *             In case of saving problems.
+	 */
+	public void saveHighScores(final List<Score> highScores,
+			final GameMode mode) throws IOException {
 		OutputStream outputStream = null;
 		BufferedWriter bufferedWriter = null;
 
@@ -307,7 +350,7 @@ public final class FileManager {
 
 			String scoresPath = new File(jarPath).getParent();
 			scoresPath += File.separator;
-			scoresPath += "scores";
+			scoresPath += scoresFileName(mode);
 
 			File scoresFile = new File(scoresPath);
 
@@ -327,7 +370,7 @@ public final class FileManager {
 					break;
 				bufferedWriter.write(score.getName());
 				bufferedWriter.newLine();
-				bufferedWriter.write(Integer.toString(score.getScore()));
+				bufferedWriter.write(score.toSaveLine());
 				bufferedWriter.newLine();
 				savedCount++;
 			}
