@@ -14,8 +14,6 @@ import engine.soundEngine.SoundManager;
 public class SettingsScreen extends Screen {
 	/** Milliseconds between selection steps. */
 	private static final int SELECTION_TIME = 200;
-	/** Spacing between menu items. */
-	private static final int SPACING = 30;
 	/** Cooldown for menu selection and volume changes. */
 	private final Cooldown selectionCooldown;
 	/** get volume from soundManager */
@@ -23,12 +21,19 @@ public class SettingsScreen extends Screen {
 	/** Current selected menu item. */
 	private int currentMenuItem = 0;
 	/** Vertical distance between the BGM and SFX sliders. */
-	private static final int SLIDER_ROW_SPACING = 60;
-	/** Rows that can be selected: BGM and SFX sliders, then HUD opacity,
-	 * HUD size and HUD animations (Team ECE - KAN-28, KAN-41). */
-	private static final int SELECTABLE_ROWS = 9;
+	private static final int SLIDER_ROW_SPACING = 55;
+	/** Vertical distance between two option rows. */
+	private static final int ROW_SPACING = 27;
+	/** Rows that can be selected: BGM and SFX sliders, difficulty
+	 * (KAN-68), HUD opacity, HUD size and HUD animations (Team ECE -
+	 * KAN-28, KAN-41), then the key bindings (KAN-63). */
+	private static final int SELECTABLE_ROWS = 10;
+	/** Row of the difficulty (Team ECE - KAN-68). */
+	private static final int DIFFICULTY_ROW = 2;
+	/** First row of the HUD options. */
+	private static final int FIRST_HUD_ROW = 3;
 	/** First row of the key bindings (Team ECE - KAN-63). */
-	private static final int FIRST_BINDING_ROW = 5;
+	private static final int FIRST_BINDING_ROW = 6;
 	/** Action waiting for its new key, or null (Team ECE - KAN-63). */
 	private engine.KeyBindings.Action capturing;
 	/** Whether space / enter was down on the previous frame. */
@@ -85,11 +90,14 @@ public class SettingsScreen extends Screen {
 	 *            -1 for left, +1 for right.
 	 */
 	private void adjustSelected(final int direction) {
-		if (this.currentMenuItem == 2)
+		if (this.currentMenuItem == DIFFICULTY_ROW)
+			engine.Difficulty.select(
+					engine.Difficulty.current().step(direction));
+		else if (this.currentMenuItem == FIRST_HUD_ROW)
 			this.hudSettings.stepOpacity(direction);
-		else if (this.currentMenuItem == 3)
+		else if (this.currentMenuItem == FIRST_HUD_ROW + 1)
 			this.hudSettings.stepSize(direction);
-		else if (this.currentMenuItem == 4)
+		else if (this.currentMenuItem == FIRST_HUD_ROW + 2)
 			this.hudSettings.setAnimated(direction > 0);
 		else if (this.currentMenuItem < 2)
 			adjustSelectedVolume(10 * direction);
@@ -244,11 +252,11 @@ public class SettingsScreen extends Screen {
 					break;
 				}
 			}
-			// HUD rows below the sliders (Team ECE - KAN-28).
-			for (int row = 0; row < 3; row++)
-				if (this.drawManager.isOnMenuRow(hudRowY(row), SPACING,
-						mouseY))
-					this.currentMenuItem = row + 2;
+			// Difficulty and HUD rows below the sliders (KAN-28, KAN-68).
+			for (int row = 0; row < 4; row++)
+				if (this.drawManager.isOnMenuRow(optionRowY(row),
+						ROW_SPACING, mouseY))
+					this.currentMenuItem = DIFFICULTY_ROW + row;
 		}
 	}
 
@@ -282,15 +290,16 @@ public class SettingsScreen extends Screen {
 	}
 
 	/**
-	 * Returns the baseline of a HUD option row, below the sliders (Team
-	 * ECE - KAN-28). Drawing and mouse hover both use it.
+	 * Returns the baseline of an option row, below the sliders (Team ECE -
+	 * KAN-28, KAN-68). Drawing and mouse hover both use it.
 	 *
 	 * @param row
-	 *            0 for opacity, 1 for size, 2 for animations.
+	 *            0 for difficulty, 1 for HUD opacity, 2 for HUD size, 3 for
+	 *            HUD animations.
 	 * @return Vertical position of the text baseline.
 	 */
-	private int hudRowY(final int row) {
-		return sliderY(1) + 45 + SPACING * row;
+	private int optionRowY(final int row) {
+		return sliderY(1) + 42 + ROW_SPACING * row;
 	}
 
 	/**
@@ -301,7 +310,7 @@ public class SettingsScreen extends Screen {
 	 * @return Vertical position of the text baseline.
 	 */
 	private int bindingY(final int row) {
-		return hudRowY(2) + 38 + SPACING * row;
+		return optionRowY(3) + 33 + ROW_SPACING * row;
 	}
 
 	/**
@@ -356,16 +365,21 @@ public class SettingsScreen extends Screen {
 		drawVolumeSlider(0, "BGM", Sound.Category.BGM);
 		drawVolumeSlider(1, "SFX", Sound.Category.SFX);
 
+		// Difficulty of the next runs (Team ECE - KAN-68).
+		this.drawManager.drawMenuRow(this, "Difficulty: "
+				+ engine.Difficulty.current().getLabel(), optionRowY(0),
+				this.currentMenuItem == DIFFICULTY_ROW);
+
 		// Gameplay HUD options (Team ECE - KAN-28, KAN-41).
 		this.drawManager.drawMenuRow(this, "HUD Opacity: "
-				+ this.hudSettings.getOpacityPercent() + "%", hudRowY(0),
-				this.currentMenuItem == 2);
+				+ this.hudSettings.getOpacityPercent() + "%", optionRowY(1),
+				this.currentMenuItem == FIRST_HUD_ROW);
 		this.drawManager.drawMenuRow(this, "HUD Size: "
-				+ this.hudSettings.getSize().getLabel(), hudRowY(1),
-				this.currentMenuItem == 3);
+				+ this.hudSettings.getSize().getLabel(), optionRowY(2),
+				this.currentMenuItem == FIRST_HUD_ROW + 1);
 		this.drawManager.drawMenuRow(this, "HUD Animations: "
 				+ (this.hudSettings.isAnimated() ? "ON" : "OFF"),
-				hudRowY(2), this.currentMenuItem == 4);
+				optionRowY(3), this.currentMenuItem == FIRST_HUD_ROW + 2);
 
 		this.drawManager.drawMenuRow(
 				this, "Key Bindings", bindingY(0), false);

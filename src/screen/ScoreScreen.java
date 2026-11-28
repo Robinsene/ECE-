@@ -79,7 +79,8 @@ public class ScoreScreen extends Screen {
 				engine.RunStats.getPlayMillis(), this.shipsDestroyed,
 				engine.RunStats.getBestCombo(),
 				engine.RunStats.getBossesBeaten(),
-				gameState.getCoinsCollected());
+				gameState.getCoinsCollected())
+				.withDifficulty(engine.Difficulty.current()); // KAN-68
 		new engine.RunRecords().submit(this.summary);
 		this.isNewRecord = false;
 		this.name = "AAA".toCharArray();
@@ -171,7 +172,8 @@ public class ScoreScreen extends Screen {
 		// Survival also keeps the stage reached (KAN-59).
 		highScores.add(new Score(new String(this.name), score,
 				engine.GameMode.current() == engine.GameMode.SURVIVAL
-						? this.stageReached : 0));
+						? this.stageReached : 0,
+				engine.Difficulty.current())); // KAN-68
 		Collections.sort(highScores);
 		if (highScores.size() > MAX_HIGH_SCORE_NUM)
 			highScores.remove(highScores.size() - 1);

@@ -38,8 +38,6 @@ public final class Core {
 	/** Max fps of current screen. */
 	private static final int FPS = 60;
 
-	/** Max lives. */
-	private static final int MAX_LIVES = 3;
 	/** Levels between extra life. */
 	private static final int EXTRA_LIFE_FRECUENCY = 3;
 	/** Total number of levels. */
@@ -146,7 +144,8 @@ public final class Core {
 			// Boss Rush starts on a boss stage (Team ECE - game modes).
 			int firstLevel = GameMode.current() == GameMode.CLASSIC
 					? startLevel : GameMode.current().firstLevel();
-			gameState = new GameState(firstLevel, 0, MAX_LIVES, 0, 0, 0);
+			gameState = new GameState(firstLevel, 0,
+					Difficulty.current().getLives(), 0, 0, 0); // KAN-68
 
 			switch (returnCode) {
 			case 1:
@@ -183,11 +182,12 @@ public final class Core {
 					// One extra live every few levels.
 					boolean bonusLife = gameState.getLevel()
 							% EXTRA_LIFE_FRECUENCY == 0
-							&& gameState.getLivesRemaining() < MAX_LIVES;
+							&& gameState.getLivesRemaining()
+									< Difficulty.current().getLives(); // KAN-68
 					
 					currentScreen = new GameScreen(gameState,
-							GameMode.settingsFor(gameState.getLevel(),
-									gameSettings),
+							Difficulty.current().apply(GameMode.settingsFor(
+									gameState.getLevel(), gameSettings)),
 							bonusLife, width, height, FPS);
 					LOGGER.info("Starting " + WIDTH + "x" + HEIGHT
 							+ " game screen at " + FPS + " fps.");

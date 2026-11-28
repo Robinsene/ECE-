@@ -20,3 +20,4 @@ src/engine/RunSummary.java
 src/engine/RunRecords.java
 src/engine/AttackPattern.java
 src/engine/KeyBindings.java
+src/engine/Difficulty.java

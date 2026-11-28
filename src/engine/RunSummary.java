@@ -9,6 +9,8 @@ public final class RunSummary {
 
 	/** Mode played. */
 	private final GameMode mode;
+	/** Difficulty of the run, shown when it is not Normal (KAN-68). */
+	private Difficulty difficulty = Difficulty.NORMAL;
 	/** Stages cleared alive. */
 	private final int stagesCleared;
 	/** Play time of the run, in ms. */
@@ -68,9 +70,25 @@ public final class RunSummary {
 				&& this.playMillis > recordMillis;
 	}
 
-	/** @return First line: mode, stages, time. */
+	/**
+	 * Sets the difficulty shown on the first line (Team ECE - KAN-68).
+	 *
+	 * @param runDifficulty
+	 *            Difficulty of the run.
+	 * @return This summary.
+	 */
+	public RunSummary withDifficulty(final Difficulty runDifficulty) {
+		this.difficulty = runDifficulty == null ? Difficulty.NORMAL
+				: runDifficulty;
+		return this;
+	}
+
+	/** @return First line: mode (and difficulty), stages, time. */
 	public String firstLine() {
-		return "MODE " + this.mode.getTitle().toUpperCase() + "   STAGES "
+		String level = this.difficulty == Difficulty.NORMAL ? ""
+				: " " + this.difficulty.getLabel().toUpperCase();
+		return "MODE " + this.mode.getTitle().toUpperCase() + level
+				+ "   STAGES "
 				+ this.stagesCleared + "   TIME "
 				+ RunStats.format(this.playMillis);
 	}

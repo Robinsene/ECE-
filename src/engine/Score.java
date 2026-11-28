@@ -14,6 +14,8 @@ public class Score implements Comparable<Score> {
 	private int score;
 	/** Stage reached, 0 if not recorded (Team ECE - KAN-59, Survival). */
 	private int stage;
+	/** Difficulty of the run (Team ECE - KAN-68). */
+	private Difficulty difficulty = Difficulty.NORMAL;
 
 	/**
 	 * Constructor.
@@ -41,6 +43,27 @@ public class Score implements Comparable<Score> {
 		this.stage = Math.max(0, stage);
 	}
 
+	/**
+	 * @param name
+	 *            Player name.
+	 * @param score
+	 *            Points.
+	 * @param stage
+	 *            Stage reached, 0 if not recorded.
+	 * @param difficulty
+	 *            Difficulty of the run (Team ECE - KAN-68).
+	 */
+	public Score(final String name, final int score, final int stage,
+			final Difficulty difficulty) {
+		this(name, score, stage);
+		this.difficulty = difficulty == null ? Difficulty.NORMAL : difficulty;
+	}
+
+	/** @return Difficulty of the run (Team ECE - KAN-68). */
+	public final Difficulty getDifficulty() {
+		return this.difficulty;
+	}
+
 	/** @return Stage reached, 0 if not recorded (Team ECE - KAN-59). */
 	public final int getStage() {
 		return this.stage;
@@ -48,13 +71,16 @@ public class Score implements Comparable<Score> {
 
 	/**
 	 * Score line of the save file: the points, then the stage when there
-	 * is one (Team ECE - KAN-59). Old files only have the points.
+	 * is one (Team ECE - KAN-59), then the difficulty letter when it is not
+	 * Normal (KAN-68). Old files only have the points.
 	 *
 	 * @return Line to save.
 	 */
 	public final String toSaveLine() {
-		return this.stage > 0 ? this.score + " " + this.stage
+		String line = this.stage > 0 ? this.score + " " + this.stage
 				: Integer.toString(this.score);
+		return this.difficulty == Difficulty.NORMAL ? line
+				: line + " " + this.difficulty.getLetter();
 	}
 
 	/**
@@ -63,13 +89,22 @@ public class Score implements Comparable<Score> {
 	 * @param name
 	 *            Name line.
 	 * @param line
-	 *            Score line: "points" or "points stage".
+	 *            Score line: "points", "points stage", optionally
+	 *            followed by a difficulty letter.
 	 * @return The score.
 	 */
 	public static Score fromSaveLines(final String name, final String line) {
 		String[] parts = line.trim().split("\\s+");
-		int stage = parts.length > 1 ? Integer.parseInt(parts[1]) : 0;
-		return new Score(name, Integer.parseInt(parts[0]), stage);
+		int stage = 0;
+		Difficulty difficulty = Difficulty.NORMAL;
+		for (int i = 1; i < parts.length; i++) {
+			if (parts[i].matches("\\d+"))
+				stage = Integer.parseInt(parts[i]);
+			else if (!parts[i].isEmpty())
+				difficulty = Difficulty.fromLetter(parts[i].charAt(0));
+		}
+		return new Score(name, Integer.parseInt(parts[0]), stage,
+				difficulty);
 	}
 
 	/**

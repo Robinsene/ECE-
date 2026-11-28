@@ -105,7 +105,7 @@ public class HighScoreScreen extends Screen {
 				+ this.mode.getTitle().toUpperCase() + "  >",
 				getHeight() / 4 + 4, java.awt.Color.YELLOW);
 		drawManager.drawHighScores(this, this.highScores);
-		drawManager.drawKeyHints(this, "left/right mode, esc back");
+		drawManager.drawKeyHints(this, "left/right mode, e easy h hard, esc back");
 
 		drawManager.completeDrawing(this);
 	}

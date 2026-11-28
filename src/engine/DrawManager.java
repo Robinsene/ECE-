@@ -2029,6 +2029,9 @@ public final class DrawManager {
 							score.getScore(), score.getStage())
 					: String.format("%s        %04d", score.getName(),
 							score.getScore());
+			// Difficulty letter when it is not Normal (Team ECE - KAN-68).
+			if (score.getDifficulty() != Difficulty.NORMAL)
+				scoreString += "  " + score.getDifficulty().getLetter();
 			drawCenteredRegularString(screen, scoreString, screen.getHeight()
 					/ 4 + fontRegularMetrics.getHeight() * (i + 1) * 2);
 			i++;
