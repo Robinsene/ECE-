@@ -124,48 +124,6 @@ public class GameScreen extends Screen {
 	/** Minimum time between two pause-menu cursor moves. */
 	private static final int PAUSE_SELECTION_DEBOUNCE = 200;
 
-	/**
-	 * Options listed in the pause menu, in the order they are drawn.
-	 */
-	private enum PauseOption {
-		/** Closes the pause menu and continues the level. */
-		RESUME("Resume"),
-		/** Restarts the current level from the beginning. */
-		RESTART("Restart"),
-		/** Ends the run and returns to the score / main menu flow. */
-		QUIT("Quit to menu");
-
-		/** Text drawn for this option. */
-		private final String label;
-
-		PauseOption(final String label) {
-			this.label = label;
-		}
-
-		/**
-		 * @return Text drawn for this option.
-		 */
-		private String getLabel() {
-			return this.label;
-		}
-
-		/**
-		 * @return Option below this one, wrapping around to the top.
-		 */
-		private PauseOption next() {
-			PauseOption[] values = values();
-			return values[(this.ordinal() + 1) % values.length];
-		}
-
-		/**
-		 * @return Option above this one, wrapping around to the bottom.
-		 */
-		private PauseOption previous() {
-			PauseOption[] values = values();
-			return values[(this.ordinal() - 1 + values.length) % values.length];
-		}
-	}
-
 	/** Current game difficulty settings. */
 	private GameSettings gameSettings;
 	/** Current difficulty level number. */
@@ -319,8 +277,9 @@ public class GameScreen extends Screen {
 	private Cooldown pauseKeyCooldown;
 	/** Debounces cursor moves in the pause menu. */
 	private Cooldown pauseSelectionCooldown;
-	/** Option the cursor is on in the pause menu. */
-	private PauseOption pauseSelection;
+	/** Pause menu: main list, settings and confirmations (KAN-69). */
+	private final engine.PauseMenu pauseMenu = new engine.PauseMenu(
+			engine.PauseMenu.liveOptions());
 	/** Score the level started with, restored by "Restart". */
 	private final int initialScore;
 	/** Lives the level started with (bonus life included), restored by
@@ -478,7 +437,6 @@ public class GameScreen extends Screen {
 		this.coinDropManager = new CoinDropManager();
 		this.pauseKeyCooldown = Core.getCooldown(PAUSE_KEY_DEBOUNCE);
 		this.pauseSelectionCooldown = Core.getCooldown(PAUSE_SELECTION_DEBOUNCE);
-		this.pauseSelection = PauseOption.RESUME;
 		this.pauseStartedAt = 0;
 
 		// Item System (Team CS): level 1 starts a new run, later levels keep it.
@@ -572,7 +530,7 @@ public class GameScreen extends Screen {
 			// Ghost Trail starts fresh after a pause. AUTHORED BY: VFX TEAM (Effection)
 			if (this.ghostTrail != null)
 				this.ghostTrail.clear();
-			this.pauseSelection = PauseOption.RESUME;
+			this.pauseMenu.reset(); // KAN-69
 			this.logger.info(this.paused ? "Game paused" : "Game resumed");
 		}
 
@@ -937,32 +895,55 @@ public class GameScreen extends Screen {
 	}
 
 	/**
-	 * Handles cursor movement and selection while the pause menu is open.
+	 * Reads the keys of the pause menu (Team ECE - KAN-69): arrows move and
+	 * change settings, Space / Enter selects, Escape goes back or resumes.
 	 */
 	private void updatePauseMenu() {
 		if (!this.pauseSelectionCooldown.checkFinished())
 			return;
-
+		engine.PauseMenu.Action action = engine.PauseMenu.Action.NONE;
 		if (inputManager.isKeyDown(KeyEvent.VK_UP)
-				|| inputManager.isKeyDown(KeyEvent.VK_W)) {
-			this.pauseSelection = this.pauseSelection.previous();
-			this.pauseSelectionCooldown.reset();
-		} else if (inputManager.isKeyDown(KeyEvent.VK_DOWN)
-				|| inputManager.isKeyDown(KeyEvent.VK_S)) {
-			this.pauseSelection = this.pauseSelection.next();
-			this.pauseSelectionCooldown.reset();
-		} else if (inputManager.isKeyDown(KeyEvent.VK_SPACE)) {
+				|| inputManager.isKeyDown(KeyEvent.VK_W))
+			this.pauseMenu.up();
+		else if (inputManager.isKeyDown(KeyEvent.VK_DOWN)
+				|| inputManager.isKeyDown(KeyEvent.VK_S))
+			this.pauseMenu.down();
+		else if (inputManager.isKeyDown(KeyEvent.VK_LEFT)
+				|| inputManager.isKeyDown(KeyEvent.VK_A))
+			this.pauseMenu.adjust(-1);
+		else if (inputManager.isKeyDown(KeyEvent.VK_RIGHT)
+				|| inputManager.isKeyDown(KeyEvent.VK_D))
+			this.pauseMenu.adjust(1);
+		else if (inputManager.isKeyDown(KeyEvent.VK_SPACE)
+				|| inputManager.isKeyDown(KeyEvent.VK_ENTER)) {
 			this.pauseSelectionCooldown.reset();
 			confirmPauseSelection();
-		}
+			return;
+		} else if (inputManager.isKeyDown(KeyEvent.VK_ESCAPE)) {
+			engine.soundEngine.MenuSounds.playCancel();
+			action = this.pauseMenu.back();
+		} else
+			return;
+		this.pauseSelectionCooldown.reset();
+		applyPauseAction(action);
 	}
 
 	/**
-	 * Carries out whichever pause menu option the cursor was on.
+	 * Selects the pause menu row under the cursor (Space / Enter).
 	 */
 	private void confirmPauseSelection() {
 		engine.soundEngine.MenuSounds.playSelect();
-		switch (this.pauseSelection) {
+		applyPauseAction(this.pauseMenu.confirm());
+	}
+
+	/**
+	 * Carries out what the pause menu asked for.
+	 *
+	 * @param action
+	 *            Action returned by the pause menu.
+	 */
+	private void applyPauseAction(final engine.PauseMenu.Action action) {
+		switch (action) {
 			case RESUME:
 				resumeGameplay();
 				break;
@@ -970,10 +951,9 @@ public class GameScreen extends Screen {
 				restartLevel();
 				break;
 			case QUIT:
-				// No dedicated "abandon" path exists in the screen flow,
-				// but ending the run the same way running out of lives
-				// does takes us straight to the existing score screen,
-				// which already offers "back to menu" / "play again".
+				// Ending the run the same way running out of lives does
+				// takes us to the score screen, which offers "back to
+				// menu" / "play again".
 				this.lives = 0;
 				this.paused = false;
 				break;
@@ -1262,13 +1242,13 @@ public class GameScreen extends Screen {
 		}
 
 		if (this.paused) {
-			String[] options = { PauseOption.RESUME.getLabel(),
-					PauseOption.RESTART.getLabel(),
-					PauseOption.QUIT.getLabel() };
-			drawManager.drawPauseMenu(this, options,
-					this.pauseSelection.ordinal());
-			// Run summary under the menu (Team ECE - KAN-27).
-			drawManager.drawPauseSummary(this,
+			// Main list, settings or confirmation (Team ECE - KAN-69).
+			String[] options = this.pauseMenu.lines();
+			drawManager.drawPauseMenu(this, this.pauseMenu.title(), options,
+					this.pauseMenu.selected());
+			// Run summary under the main list (Team ECE - KAN-27).
+			if (this.pauseMenu.isMain())
+				drawManager.drawPauseSummary(this,
 					new String[] { "SCORE", "STAGE", "ENEMIES KILLED",
 							"STAGE TIME", "COINS THIS RUN", "SHIP" },
 					new String[] { Integer.toString(this.score),
@@ -1278,8 +1258,7 @@ public class GameScreen extends Screen {
 							Integer.toString(this.coinsCollected),
 							shipSummary() },
 					options.length);
-			drawManager.drawKeyHints(this,
-					"w+s / arrows to move, space to select, P to resume");
+			drawManager.drawKeyHints(this, this.pauseMenu.hints());
 		}
 
 		// Countdown to game start (skipped while paused, so the pause menu

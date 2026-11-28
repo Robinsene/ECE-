@@ -1280,7 +1280,24 @@ public final class DrawManager {
 	 */
 	public void drawPauseMenu(final Screen screen, final String[] options,
 							  final int selectedIndex) {
-		String title = "PAUSED";
+		drawPauseMenu(screen, "PAUSED", options, selectedIndex);
+	}
+
+	/**
+	 * Draws the pause menu box with a title, for the settings and
+	 * confirmation panels (Team ECE - KAN-69).
+	 *
+	 * @param screen
+	 *            Screen to draw on.
+	 * @param title
+	 *            Title of the box.
+	 * @param options
+	 *            Lines of the box.
+	 * @param selectedIndex
+	 *            Line the cursor is on.
+	 */
+	public void drawPauseMenu(final Screen screen, final String title,
+			final String[] options, final int selectedIndex) {
 
 		int spacing = menuItemSpacing();
 		int boxWidth = screen.getWidth() * 3 / 4;
