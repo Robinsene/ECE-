@@ -65,6 +65,8 @@ public final class HudSettings {
 	private Size size = Size.NORMAL;
 	/** True to animate the HUD (count-ups, blinks, pulses, popups). */
 	private boolean animated = true;
+	/** True for screen shake and slow motion (Team ECE - KAN-66). */
+	private boolean effects = true;
 
 	/** Loads the saved options, or keeps the defaults. */
 	private HudSettings() {
@@ -116,6 +118,24 @@ public final class HudSettings {
 	 */
 	public void setAnimated(final boolean animated) {
 		this.animated = animated;
+		save();
+	}
+
+	/**
+	 * @return True when screen shake and slow motion are on (KAN-66).
+	 */
+	public boolean areEffectsOn() {
+		return this.effects;
+	}
+
+	/**
+	 * Turns screen shake and slow motion on or off, and saves (KAN-66).
+	 *
+	 * @param effectsOn
+	 *            True to turn them on.
+	 */
+	public void setEffects(final boolean effectsOn) {
+		this.effects = effectsOn;
 		save();
 	}
 
@@ -179,6 +199,8 @@ public final class HudSettings {
 					"NORMAL").trim());
 			this.animated = !"false".equalsIgnoreCase(properties
 					.getProperty("animations", "true").trim());
+			this.effects = !"false".equalsIgnoreCase(properties
+					.getProperty("effects", "true").trim());
 		} catch (IOException | IllegalArgumentException e) {
 			this.logger.warning("Couldn't load HUD settings, using defaults.");
 		}
@@ -192,6 +214,7 @@ public final class HudSettings {
 			properties.setProperty("size", this.size.name());
 			properties.setProperty("animations",
 					Boolean.toString(this.animated));
+			properties.setProperty("effects", Boolean.toString(this.effects));
 			try (BufferedWriter writer = new BufferedWriter(
 					new OutputStreamWriter(new FileOutputStream(saveFile()),
 							Charset.forName("UTF-8")))) {

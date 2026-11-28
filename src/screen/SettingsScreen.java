@@ -23,17 +23,22 @@ public class SettingsScreen extends Screen {
 	/** Vertical distance between the BGM and SFX sliders. */
 	private static final int SLIDER_ROW_SPACING = 55;
 	/** Vertical distance between two option rows. */
-	private static final int ROW_SPACING = 27;
+	private static final int ROW_SPACING = 25;
 	/** Rows that can be selected: BGM and SFX sliders, difficulty
 	 * (KAN-68), HUD opacity, HUD size and HUD animations (Team ECE -
-	 * KAN-28, KAN-41), then the key bindings (KAN-63). */
-	private static final int SELECTABLE_ROWS = 10;
+	 * KAN-28, KAN-41), screen effects (KAN-66), then the key bindings
+	 * (KAN-63). */
+	private static final int SELECTABLE_ROWS = 11;
 	/** Row of the difficulty (Team ECE - KAN-68). */
 	private static final int DIFFICULTY_ROW = 2;
 	/** First row of the HUD options. */
 	private static final int FIRST_HUD_ROW = 3;
 	/** First row of the key bindings (Team ECE - KAN-63). */
-	private static final int FIRST_BINDING_ROW = 6;
+	private static final int FIRST_BINDING_ROW = 7;
+	/** Row of the screen effects switch (Team ECE - KAN-66). */
+	private static final int EFFECTS_ROW = 6;
+	/** Number of option rows between the sliders and the bindings. */
+	private static final int OPTION_ROWS = 5;
 	/** Action waiting for its new key, or null (Team ECE - KAN-63). */
 	private engine.KeyBindings.Action capturing;
 	/** Whether space / enter was down on the previous frame. */
@@ -99,6 +104,8 @@ public class SettingsScreen extends Screen {
 			this.hudSettings.stepSize(direction);
 		else if (this.currentMenuItem == FIRST_HUD_ROW + 2)
 			this.hudSettings.setAnimated(direction > 0);
+		else if (this.currentMenuItem == EFFECTS_ROW)
+			this.hudSettings.setEffects(direction > 0);
 		else if (this.currentMenuItem < 2)
 			adjustSelectedVolume(10 * direction);
 		// Key binding rows: left / right do nothing (KAN-63).
@@ -253,7 +260,7 @@ public class SettingsScreen extends Screen {
 				}
 			}
 			// Difficulty and HUD rows below the sliders (KAN-28, KAN-68).
-			for (int row = 0; row < 4; row++)
+			for (int row = 0; row < OPTION_ROWS; row++)
 				if (this.drawManager.isOnMenuRow(optionRowY(row),
 						ROW_SPACING, mouseY))
 					this.currentMenuItem = DIFFICULTY_ROW + row;
@@ -286,7 +293,7 @@ public class SettingsScreen extends Screen {
 	 * @return Vertical centre of the slider track.
 	 */
 	private int sliderY(final int index) {
-		return this.getHeight() / 4 + index * SLIDER_ROW_SPACING;
+		return this.getHeight() / 4 - 10 + index * SLIDER_ROW_SPACING;
 	}
 
 	/**
@@ -295,7 +302,7 @@ public class SettingsScreen extends Screen {
 	 *
 	 * @param row
 	 *            0 for difficulty, 1 for HUD opacity, 2 for HUD size, 3 for
-	 *            HUD animations.
+	 *            HUD animations, 4 for screen effects.
 	 * @return Vertical position of the text baseline.
 	 */
 	private int optionRowY(final int row) {
@@ -310,7 +317,7 @@ public class SettingsScreen extends Screen {
 	 * @return Vertical position of the text baseline.
 	 */
 	private int bindingY(final int row) {
-		return optionRowY(3) + 33 + ROW_SPACING * row;
+		return optionRowY(OPTION_ROWS - 1) + 33 + ROW_SPACING * row;
 	}
 
 	/**
@@ -380,6 +387,10 @@ public class SettingsScreen extends Screen {
 		this.drawManager.drawMenuRow(this, "HUD Animations: "
 				+ (this.hudSettings.isAnimated() ? "ON" : "OFF"),
 				optionRowY(3), this.currentMenuItem == FIRST_HUD_ROW + 2);
+		// Screen shake and slow motion (Team ECE - KAN-66).
+		this.drawManager.drawMenuRow(this, "Screen Effects: "
+				+ (this.hudSettings.areEffectsOn() ? "ON" : "OFF"),
+				optionRowY(4), this.currentMenuItem == EFFECTS_ROW);
 
 		this.drawManager.drawMenuRow(
 				this, "Key Bindings", bindingY(0), false);

@@ -71,6 +71,10 @@ public class GameScreen extends Screen {
 	/** Time from finishing the level to screen change. */
 	private static final int SCREEN_CHANGE_INTERVAL = 1500;
 	// Game over animation timings. AUTHORED BY: VFX TEAM (Effection)
+	/** Sparks when a two-hit enemy survives a hit (Team ECE - KAN-66). */
+	private static final int HIT_SPARKS = 6;
+	/** Sparkles when a boss is destroyed (Team ECE - KAN-66). */
+	private static final int BOSS_SPARKLES = 48;
 	/** Pause after the player ship explodes, before enemies disappear. */
 	private static final int GAME_OVER_PAUSE = 500;
 	/** Time between the first enemy rows starting to shrink on game over. */
@@ -276,6 +280,8 @@ public class GameScreen extends Screen {
 	private engine.ExtraLifeTracker extraLifeTracker;
 	/** Screen shake when an enemy is destroyed. */
 	private ScreenShake screenShake;
+	/** Slow motion on the final hit of a boss (Team ECE - KAN-66). */
+	private final engine.SlowMotion slowMotion = new engine.SlowMotion();
 	/** Wave progress, stage clear banner and boss warning (Team ECE - KAN-29/30/31). */
 	private engine.StageHud stageHud;
 	/** Shop affordability hint (Team ECE - KAN-40). */
@@ -574,6 +580,13 @@ public class GameScreen extends Screen {
 			this.comboTracker.holdDuringPause(System.currentTimeMillis()); // KAN-23
 			engine.RunStats.hold(); // the run timer stops too (KAN-37)
 			updatePauseMenu();
+			draw();
+			return;
+		}
+
+		// Slow motion: one update out of two is skipped, the screen is
+		// still drawn every frame (Team ECE - KAN-66).
+		if (this.slowMotion.skipFrame(System.currentTimeMillis())) {
 			draw();
 			return;
 		}
@@ -1107,7 +1120,7 @@ public class GameScreen extends Screen {
 					this.skin.colorAt(System.currentTimeMillis()),
 					SEPARATION_LINE_HEIGHT);
 			if (this.warpIn != null && this.warpIn.takeImpact())
-				this.screenShake.trigger();
+				shake();
 			drawManager.drawItemShield(this.ship, this.items); // Item System (Team CS)
 			if (this.enemyShipSpecial != null)
 				drawManager.drawEntity(this.enemyShipSpecial,
@@ -1346,6 +1359,44 @@ public class GameScreen extends Screen {
 	}
 
 	/**
+	 * Small burst of sparks where a two-hit enemy takes its first hit, so
+	 * the hit reads even though the enemy survives (Team ECE - KAN-66).
+	 *
+	 * @param ship
+	 *            Enemy that was hit.
+	 */
+	private void spawnHitSparks(final EnemyShip ship) {
+		float centerX = ship.getPositionX() + ship.getWidth() / 2f;
+		float bottomY = ship.getPositionY() + ship.getHeight();
+		for (int i = 0; i < HIT_SPARKS; i++)
+			this.particles.add(new Particle(centerX, bottomY,
+					i % 2 == 0 ? Color.WHITE : Color.YELLOW));
+	}
+
+	/**
+	 * Large burst of sparkles where a boss is destroyed (Team ECE - KAN-66).
+	 *
+	 * @param boss
+	 *            Boss that was destroyed.
+	 */
+	private void spawnBossBurst(final Entity boss) {
+		float centerX = boss.getPositionX() + boss.getWidth() / 2f;
+		float centerY = boss.getPositionY() + boss.getHeight() / 2f;
+		for (int i = 0; i < BOSS_SPARKLES; i++)
+			this.particles.add(new Particle(centerX, centerY,
+					SPARKLE_COLORS[i % SPARKLE_COLORS.length]));
+	}
+
+	/**
+	 * Shakes the screen, unless effects are off in the settings (Team ECE
+	 * - KAN-66).
+	 */
+	private void shake() {
+		if (engine.HudSettings.getInstance().areEffectsOn())
+			this.screenShake.trigger();
+	}
+
+	/**
 	 * Moves the sparkles and removes the ones that faded away or left the
 	 * play area. Called every frame, outside the levelFinished gate, so
 	 * sparkles keep fading after a level ends instead of piling up.
@@ -1393,6 +1444,7 @@ public class GameScreen extends Screen {
                         PlayerSounds.playHit(this.lives); // <-- Ajout du son
 						this.tookDamage = true; // Survivor tiers (Mantis)
 						GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives); // AUTHORED BY: VFX TEAM (Effection)
+						shake(); // Team ECE - KAN-66
 						this.logger.info("Hit on player ship, " + this.lives
 								+ " lives remaining.");
 					}
@@ -1407,7 +1459,12 @@ public class GameScreen extends Screen {
 							this.shipsDestroyed++;
 							GameEvents.emit(GameEvents.Type.ENEMY_KILLED, 0); // KAN-38
 							engine.RunStats.recordBossBeaten(); // KAN-58
-							this.screenShake.trigger();
+							shake();
+							// Explosion and slow motion on the final hit
+							// (Team ECE - KAN-66).
+							spawnBossBurst((Entity) this.midBoss);
+							if (engine.HudSettings.getInstance().areEffectsOn())
+								this.slowMotion.trigger(System.currentTimeMillis());
 							showUnlockedAchievement(Core.getAchievementManager()
 									.recordBossDefeated());
 							showUnlockedAchievement(Core.getAchievementManager()
@@ -1423,6 +1480,7 @@ public class GameScreen extends Screen {
 							// Surviving hits consume the bullet without awarding kill rewards.
 							if (!enemyShip.takeDamage(1)) {
 								SoundManager.getInstance().playSfx(Sound.ENEMY_HIT);
+								spawnHitSparks(enemyShip); // Team ECE - KAN-66
 								continue;
 							}
 							// Score boost (Team CS) times the kill combo (Team ECE - KAN-23).
@@ -1435,7 +1493,7 @@ public class GameScreen extends Screen {
 										enemyShip.getPositionX() + enemyShip.getWidth() / 2,
 										enemyShip.getPositionY() + enemyShip.getHeight() / 2,
 										aliveEnemyCenters());
-							this.screenShake.trigger();
+							shake();
 							this.pointsEffect.spawn(
 									enemyShip.getPositionX() + enemyShip.getWidth() / 2,
 									enemyShip.getPositionY() + enemyShip.getHeight() / 2,
@@ -1456,7 +1514,7 @@ public class GameScreen extends Screen {
 					this.shipsDestroyed++;
 					spawnSparkles(this.enemyShipSpecial); // AUTHORED BY: VFX TEAM (Effection)
 					this.enemyShipSpecial.destroy();
-					this.screenShake.trigger();
+					shake();
 					// Bonus points popup. AUTHORED BY: VFX TEAM (Effection)
 					this.pointsEffect.spawnBonus(
 							this.enemyShipSpecial.getPositionX() + this.enemyShipSpecial.getWidth() / 2,
