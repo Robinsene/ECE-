@@ -31,6 +31,8 @@ public class EnemyShip extends Entity {
 	private boolean isDestroyed;
 	/** Remaining health; ordinary and bonus ships start with one hit point. */
 	private int health = 1;
+	/** True when the ship breaks into two fragments (KAN-67). */
+	private boolean splitter;
 	/** Values of the ship, in points, when destroyed. */
 	private int pointValue;
 	/** How long the explosion flickers after a hit, in milliseconds. */
@@ -101,6 +103,20 @@ public class EnemyShip extends Entity {
 		if (this.health == 1)
 			setColor(Color.WHITE);
 		return this.health == 0;
+	}
+
+	/**
+	 * Marks the ship as a splitter: it breaks into two fragments when shot
+	 * (Team ECE - KAN-67).
+	 */
+	public final void markSplitter() {
+		this.splitter = true;
+		setColor(Color.MAGENTA);
+	}
+
+	/** @return True for a splitter (Team ECE - KAN-67). */
+	public final boolean isSplitter() {
+		return this.splitter;
 	}
 
 	/** @return Remaining hit points. */

@@ -536,30 +536,96 @@ public class EnemyShipFormation implements Iterable<EnemyShip> {
 							+ this.enemyShips.indexOf(column) + "," + i + ")");
 				}
 
-		// Updates the list of ships that can shoot the player.
-		if (this.shooters.contains(destroyedShip)) {
-			int destroyedShipIndex = this.shooters.indexOf(destroyedShip);
-			int destroyedShipColumnIndex = -1;
-
-			for (List<EnemyShip> column : this.enemyShips)
-				if (column.contains(destroyedShip)) {
-					destroyedShipColumnIndex = this.enemyShips.indexOf(column);
-					break;
-				}
-
-			EnemyShip nextShooter = getNextShooter(this.enemyShips
-					.get(destroyedShipColumnIndex));
-
-			if (nextShooter != null)
-				this.shooters.set(destroyedShipIndex, nextShooter);
-			else {
-				this.shooters.remove(destroyedShipIndex);
-				this.logger.info("Shooters list reduced to "
-						+ this.shooters.size() + " members.");
-			}
-		}
+		replaceShooter(destroyedShip);
 
 		this.shipCount--;
+	}
+
+	/**
+	 * Updates the list of ships that can shoot the player after a ship
+	 * left: the next ship up its column takes over, if any.
+	 *
+	 * @param leavingShip
+	 *            Ship that was destroyed or left the formation.
+	 */
+	private void replaceShooter(final EnemyShip leavingShip) {
+		if (!this.shooters.contains(leavingShip))
+			return;
+		int leavingShipIndex = this.shooters.indexOf(leavingShip);
+		int leavingShipColumnIndex = -1;
+
+		for (List<EnemyShip> column : this.enemyShips)
+			if (column.contains(leavingShip)) {
+				leavingShipColumnIndex = this.enemyShips.indexOf(column);
+				break;
+			}
+
+		EnemyShip nextShooter = getNextShooter(this.enemyShips
+				.get(leavingShipColumnIndex));
+
+		if (nextShooter != null && nextShooter != leavingShip)
+			this.shooters.set(leavingShipIndex, nextShooter);
+		else {
+			this.shooters.remove(leavingShipIndex);
+			this.logger.info("Shooters list reduced to "
+					+ this.shooters.size() + " members.");
+		}
+	}
+
+	/**
+	 * Takes a bottom ship out of the formation so it can dive at the
+	 * player (Team ECE - KAN-67). It no longer counts as part of the
+	 * formation.
+	 *
+	 * @param random
+	 *            Picks the ship.
+	 * @return The ship that left, or null when none can.
+	 */
+	public final EnemyShip releaseDiver(final java.util.Random random) {
+		List<EnemyShip> candidates = new ArrayList<EnemyShip>();
+		// Splitters and two-hit ships stay in the formation.
+		for (EnemyShip shooter : this.shooters)
+			if (!shooter.isDestroyed() && !shooter.isSplitter()
+					&& shooter.getHealth() == 1)
+				candidates.add(shooter);
+		if (candidates.isEmpty())
+			return null;
+		EnemyShip diver = candidates.get(random.nextInt(candidates.size()));
+		// A shooter is the lowest ship of its column, so once it is out the
+		// next shooter is the one above it.
+		for (List<EnemyShip> column : this.enemyShips)
+			if (column.contains(diver)) {
+				column.remove(diver);
+				int index = this.shooters.indexOf(diver);
+				EnemyShip nextShooter = getNextShooter(column);
+				if (nextShooter != null)
+					this.shooters.set(index, nextShooter);
+				else
+					this.shooters.remove(index);
+				break;
+			}
+		this.shipCount--;
+		return diver;
+	}
+
+	/**
+	 * Turns some one-hit ships into splitters (Team ECE - KAN-67).
+	 *
+	 * @param count
+	 *            Number of splitters wanted.
+	 * @param random
+	 *            Picks the ships.
+	 */
+	public final void markSplitters(final int count,
+			final java.util.Random random) {
+		List<EnemyShip> candidates = new ArrayList<EnemyShip>();
+		for (List<EnemyShip> column : this.enemyShips)
+			for (EnemyShip ship : column)
+				if (!ship.isDestroyed() && ship.getHealth() == 1)
+					candidates.add(ship);
+		Collections.shuffle(candidates, random);
+		for (int i = 0; i < Math.min(count, candidates.size()); i++)
+			candidates.get(i).markSplitter();
 	}
 
 	/**

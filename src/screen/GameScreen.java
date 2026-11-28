@@ -238,6 +238,10 @@ public class GameScreen extends Screen {
 	private engine.ExtraLifeTracker extraLifeTracker;
 	/** Screen shake when an enemy is destroyed. */
 	private ScreenShake screenShake;
+	/** Divers and splitter fragments of this stage (Team ECE - KAN-67). */
+	private entity.DiverSquad divers = new entity.DiverSquad(0);
+	/** Picks divers and splitters (Team ECE - KAN-67). */
+	private final java.util.Random variantRandom = new java.util.Random();
 	/** Slow motion on the final hit of a boss (Team ECE - KAN-66). */
 	private final engine.SlowMotion slowMotion = new engine.SlowMotion();
 	/** Wave progress, stage clear banner and boss warning (Team ECE - KAN-29/30/31). */
@@ -370,6 +374,12 @@ public class GameScreen extends Screen {
 		} else {
 			this.enemyShipFormation = new EnemyShipFormation(this.gameSettings);
 			this.enemyShipFormation.attach(this);
+			// Splitters and divers on later stages (Team ECE - KAN-67).
+			this.enemyShipFormation.markSplitters(
+					engine.EnemyVariants.splitterCount(this.level),
+					this.variantRandom);
+			this.divers = new entity.DiverSquad(
+					engine.EnemyVariants.diverInterval(this.level));
 		}
 		// Skin chosen in Customize (GoG - Currency System).
 		this.skin = PurchaseManager.getInstance().getSelectedSkin();
@@ -615,12 +625,14 @@ public class GameScreen extends Screen {
 			} else {
 				if (!this.items.enemiesFrozen())
 					this.enemyShipFormation.update();
+				releaseDiver(); // Team ECE - KAN-67
 				// Fan and aimed shots on later stages (Team ECE - KAN-60).
 				this.enemyShipFormation.shoot(this.bullets, this.level,
 						this.ship.getPositionX() + this.ship.getWidth() / 2,
 						this.ship.getPositionY());
 				this.meteors.trySpawn(this.enemyShipFormation, this.ship); // VFX meteor needs a normal formation.
 			}
+			updateDivers(); // Team ECE - KAN-67
 			updateLowHealthEffect();
 			this.ship.setBlinking(this.lowHealthActive);
 		}
@@ -653,7 +665,8 @@ public class GameScreen extends Screen {
 		}
 
 		boolean isCleared = this.midBoss != null
-				? this.midBoss.isDestroyed() : this.enemyShipFormation.isEmpty();
+				? this.midBoss.isDestroyed()
+				: this.enemyShipFormation.isEmpty() && !this.divers.hasAlive();
 		if ((isCleared || this.lives == 0)
 				&& !this.levelFinished) {
 			this.levelFinished = true;
@@ -740,6 +753,11 @@ public class GameScreen extends Screen {
 		int alive = 0;
 		for (EnemyShip enemyShip : this.enemyShipFormation)
 			if (!enemyShip.isDestroyed())
+				alive++;
+		// A diver that left the formation still counts (KAN-67).
+		for (entity.DivingEnemy diver : this.divers)
+			if (!diver.isDestroyed()
+					&& diver.getKind() == entity.DivingEnemy.Kind.DIVER)
 				alive++;
 		return alive;
 	}
@@ -1115,6 +1133,10 @@ public class GameScreen extends Screen {
 			} else {
 				this.enemyShipFormation.draw();
 			}
+			// Divers and fragments (Team ECE - KAN-67).
+			for (entity.DivingEnemy diver : this.divers)
+				drawManager.drawEntity(diver, diver.getPositionX(),
+						diver.getPositionY());
 
 			// Hit sparkles move with the game world.
 			drawManager.drawParticles(this, this.particles,
@@ -1338,6 +1360,82 @@ public class GameScreen extends Screen {
 	}
 
 	/**
+	 * The player ship takes a hit, unless the shield item blocks it.
+	 */
+	private void damagePlayer() {
+		if (this.ship.isDestroyed() || this.items.tryBlockHit()) // Shield item (Team CS)
+			return;
+		this.ship.destroy();
+		this.lives--;
+		PlayerSounds.playHit(this.lives);
+		this.tookDamage = true; // Survivor tiers (Mantis)
+		GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives); // AUTHORED BY: VFX TEAM (Effection)
+		shake(); // Team ECE - KAN-66
+		this.logger.info("Hit on player ship, " + this.lives
+				+ " lives remaining.");
+	}
+
+	/**
+	 * Sends a bottom ship of the formation diving when it is time (Team
+	 * ECE - KAN-67).
+	 */
+	private void releaseDiver() {
+		if (this.items.enemiesFrozen()
+				|| !this.divers.isDiverDue(System.currentTimeMillis()))
+			return;
+		EnemyShip leaving = this.enemyShipFormation
+				.releaseDiver(this.variantRandom);
+		if (leaving != null)
+			this.divers.dive(leaving);
+	}
+
+	/**
+	 * Moves the divers and fragments; one that reaches the player ship
+	 * explodes and costs a life (Team ECE - KAN-67).
+	 */
+	private void updateDivers() {
+		this.divers.update(this.ship.getPositionX() + this.ship.getWidth() / 2,
+				this.height, this.items.enemiesFrozen());
+		for (entity.DivingEnemy diver : this.divers)
+			if (!diver.isDestroyed() && checkCollision(diver, this.ship)) {
+				diver.destroy();
+				damagePlayer();
+			}
+	}
+
+	/**
+	 * Checks a player bullet against the divers and fragments (Team ECE -
+	 * KAN-67).
+	 *
+	 * @param bullet
+	 *            Player bullet.
+	 * @param recyclable
+	 *            Bullets to recycle; the bullet is added on a hit.
+	 */
+	private void shootDivers(final Bullet bullet,
+			final Set<Bullet> recyclable) {
+		for (entity.DivingEnemy diver : this.divers) {
+			if (diver.isDestroyed() || !checkCollision(bullet, diver))
+				continue;
+			recyclable.add(bullet);
+			addKillScore(this.items.scoreFor(diver.getScore()));
+			this.shipsDestroyed++;
+			spawnSparkles(diver);
+			diver.destroy();
+			shake();
+			this.pointsEffect.spawn(
+					diver.getPositionX() + diver.getWidth() / 2,
+					diver.getPositionY() + diver.getHeight() / 2,
+					diver.getScore());
+			maybeDropCoin(diver);
+			this.items.onEnemyDefeated(diver, false);
+			showUnlockedAchievement(Core.getAchievementManager()
+					.recordEnemyDefeated());
+			return;
+		}
+	}
+
+	/**
 	 * Small burst of sparks where a two-hit enemy takes its first hit, so
 	 * the hit reads even though the enemy survives (Team ECE - KAN-66).
 	 *
@@ -1416,17 +1514,7 @@ public class GameScreen extends Screen {
 			if (bullet.getSpeed() > 0) {
 				if (checkCollision(bullet, this.ship) && !this.levelFinished) {
 					recyclable.add(bullet);
-					if (!this.ship.isDestroyed()
-							&& !this.items.tryBlockHit()) { // Shield item (Team CS)
-						this.ship.destroy();
-						this.lives--;
-                        PlayerSounds.playHit(this.lives); // <-- Ajout du son
-						this.tookDamage = true; // Survivor tiers (Mantis)
-						GameEvents.emit(GameEvents.Type.PLAYER_HIT, this.lives); // AUTHORED BY: VFX TEAM (Effection)
-						shake(); // Team ECE - KAN-66
-						this.logger.info("Hit on player ship, " + this.lives
-								+ " lives remaining.");
-					}
+					damagePlayer();
 				}
 			} else {
 				if (engine.StageHud.isBossLevel(this.level)) {
@@ -1467,6 +1555,8 @@ public class GameScreen extends Screen {
 							this.shipsDestroyed++;
 							spawnSparkles(enemyShip);
 							this.enemyShipFormation.destroy(enemyShip);
+							if (enemyShip.isSplitter()) // Team ECE - KAN-67
+								this.divers.split(enemyShip);
 							if (this.lightningOn) // Lightning Chain. AUTHORED BY: VFX TEAM (Effection)
 								this.lightningChain.onKill(
 										enemyShip.getPositionX() + enemyShip.getWidth() / 2,
@@ -1486,6 +1576,8 @@ public class GameScreen extends Screen {
 						}
 					}
 				}
+				if (!recyclable.contains(bullet)) // Team ECE - KAN-67
+					shootDivers(bullet, recyclable);
 				if (this.enemyShipSpecial != null
 						&& !this.enemyShipSpecial.isDestroyed()
 						&& checkCollision(bullet, this.enemyShipSpecial)) {

@@ -23,3 +23,6 @@ src/engine/KeyBindings.java
 src/engine/Difficulty.java
 src/engine/SlowMotion.java
 src/engine/PauseMenu.java
+src/engine/EnemyVariants.java
+src/entity/DiverSquad.java
+src/entity/DivingEnemy.java
